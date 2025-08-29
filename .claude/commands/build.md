@@ -42,6 +42,11 @@ task_description
 3. **Test**: Verify the implementation works as expected
 4. **Commit**: Create a meaningful commit with the changes
 
+## Validation
+
+1. Use the spec-implementation-validator subagent to review the work done by passing it relevant context for validation (spec path or description, relevant git commits, etc.)
+2. If the agent response with blocking changes or low-lift follow ups, address them. Otherwise, continue to `Report`.
+
 ## Report
 
 After completing the implementation:
