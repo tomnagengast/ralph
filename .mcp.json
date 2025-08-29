@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"codex": {
+			"command": "codex",
+			"args": [
+				"mcp",
+				"-c model=gpt-5-high",
+				"-c include-plan-tool=true",
+				"-c 'sandbox_permissions=[\"danger-full-access\"]'",
+				"-c shell_environment_policy.inherit=all"
+			]
+		}
+	}
+}
