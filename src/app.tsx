@@ -35,18 +35,32 @@ export default function App(props: Props) {
 
 		const engine = new RunEngine(config);
 		
+		// Listen for iteration start event
+		engine.on('iteration:start', () => {
+			setOutput('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+			outputProcessor.clear();
+		});
+		
 		// Process stream JSON output
 		engine.on('output', (data: string) => {
+			// Try to parse as stream JSON first
 			const outputs = outputProcessor.processStreamJson(data);
-			for (const out of outputs) {
-				if (out.type === 'text' || out.type === 'content') {
-					const text = out.content || out.text || '';
-					setOutput(prev => prev + text);
-				} else if (out.type === 'tool_use') {
-					setOutput(prev => prev + `\n🔧 Using tool: ${out.tool_name}\n`);
-				} else if (out.type === 'error') {
-					setOutput(prev => prev + `\n❌ Error: ${out.error}\n`);
+			
+			if (outputs.length > 0) {
+				// We have valid JSON output
+				for (const out of outputs) {
+					if (out.type === 'text' || out.type === 'content') {
+						const text = out.content || out.text || '';
+						setOutput(prev => prev + text);
+					} else if (out.type === 'tool_use') {
+						setOutput(prev => prev + `\n🔧 Using tool: ${out.tool_name}\n`);
+					} else if (out.type === 'error') {
+						setOutput(prev => prev + `\n❌ Error: ${out.error}\n`);
+					}
 				}
+			} else {
+				// If not JSON, display raw output
+				setOutput(prev => prev + data);
 			}
 		});
 		

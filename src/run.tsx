@@ -43,6 +43,8 @@ export class RunEngine extends EventEmitter {
 
 	private async runIteration(): Promise<void> {
 		try {
+			this.emit('iteration:start');
+			
 			const promptContent = await this.getPromptContent();
 			if (!promptContent) {
 				throw new Error('No prompt content available');

@@ -25,11 +25,15 @@ export class OutputProcessor {
 					const parsed = JSON.parse(line) as StreamJsonOutput;
 					results.push(parsed);
 				} catch {
-					// Not JSON, ignore
+					// Not JSON - could be raw output, ignore for JSON processing
 				}
 			}
 		}
 		
 		return results;
+	}
+	
+	clear(): void {
+		this.buffer = '';
 	}
 }
