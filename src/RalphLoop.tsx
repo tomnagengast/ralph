@@ -3,6 +3,17 @@ import {Box, Text, useApp, useInput} from 'ink';
 import {spawn} from 'child_process';
 import fs from 'fs';
 
+interface StreamJsonEvent {
+	type: string;
+	content?: string;
+	text?: string;
+	tool_name?: string;
+	tool_input?: any;
+	tool_result?: any;
+	error?: string;
+	[key: string]: any;
+}
+
 interface Props {
 	promptPath: string;
 	claudeArgs: string[];
@@ -20,9 +31,11 @@ export default function RalphLoop({
 	const [iterationCount, setIterationCount] = useState(0);
 	const [currentPhase, setCurrentPhase] = useState<'prompt' | 'response' | 'waiting'>('prompt');
 	const [promptContent, setPromptContent] = useState('');
-	const [responseContent, setResponseContent] = useState('');
+	const [responseEvents, setResponseEvents] = useState<StreamJsonEvent[]>([]);
+	const [rawResponse, setRawResponse] = useState('');
 	const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 	const [lastError, setLastError] = useState('');
+	const [isJsonMode, setIsJsonMode] = useState(false);
 
 	// Handle Ctrl+C
 	useInput((input, key) => {
@@ -38,7 +51,12 @@ export default function RalphLoop({
 			setPromptContent(prompt);
 			setCurrentPhase('prompt');
 			setIterationCount(prev => prev + 1);
-			setResponseContent('');
+			setResponseEvents([]);
+			setRawResponse('');
+			
+			// Check if we're in JSON mode
+			const jsonMode = claudeArgs.includes('stream-json');
+			setIsJsonMode(jsonMode);
 			
 			// Small delay to show prompt
 			await new Promise(resolve => setTimeout(resolve, 100));
@@ -55,16 +73,38 @@ export default function RalphLoop({
 			claude.stdin.end();
 			
 			// Collect response
-			let response = '';
+			let buffer = '';
+			let events: StreamJsonEvent[] = [];
+			
 			claude.stdout.on('data', (data) => {
-				response += data.toString();
-				setResponseContent(response);
+				const chunk = data.toString();
+				
+				if (jsonMode) {
+					buffer += chunk;
+					const lines = buffer.split('\n');
+					buffer = lines.pop() || '';
+					
+					for (const line of lines) {
+						if (line.trim()) {
+							try {
+								const event = JSON.parse(line) as StreamJsonEvent;
+								events.push(event);
+								setResponseEvents([...events]);
+							} catch {
+								// Not JSON, treat as raw
+								setRawResponse(prev => prev + line + '\n');
+							}
+						}
+					}
+				} else {
+					setRawResponse(prev => prev + chunk);
+				}
 			});
 			
 			claude.stderr.on('data', (data) => {
 				const error = data.toString();
 				setLastError(error);
-				setResponseContent(prev => prev + '\n' + error);
+				setRawResponse(prev => prev + '\n' + error);
 			});
 			
 			// Wait for completion
@@ -99,6 +139,37 @@ export default function RalphLoop({
 
 	const timestamp = new Date().toLocaleTimeString();
 
+	// Format response for display
+	const formatResponse = () => {
+		if (isJsonMode && responseEvents.length > 0) {
+			return responseEvents.map((event, i) => {
+				const formatted = JSON.stringify(event, null, 2);
+				const lines = formatted.split('\n');
+				
+				// Add color based on event type
+				let color = 'white';
+				if (event.type === 'text' || event.type === 'content') color = 'green';
+				else if (event.type === 'tool_use') color = 'yellow';
+				else if (event.type === 'tool_result') color = 'cyan';
+				else if (event.type === 'error') color = 'red';
+				
+				return (
+					<Box key={i} flexDirection="column" marginBottom={1}>
+						<Text color={color}>
+							{lines.map((line, j) => (
+								<Text key={j}>
+									{line}
+									{j < lines.length - 1 ? '\n' : ''}
+								</Text>
+							)).join('')}
+						</Text>
+					</Box>
+				);
+			});
+		}
+		return <Text>{rawResponse || 'Waiting for response...'}</Text>;
+	};
+
 	return (
 		<Box flexDirection="column">
 			<Box marginBottom={1}>
@@ -123,13 +194,17 @@ export default function RalphLoop({
 			</Box>
 			
 			<Box flexDirection="column">
-				<Text bold color="blue">🤖 CLAUDE RESPONSE:</Text>
+				<Text bold color="blue">
+					🤖 CLAUDE RESPONSE: {isJsonMode && <Text dimColor>(JSON Stream Mode)</Text>}
+				</Text>
 				<Box borderStyle="single" borderColor="blue" paddingX={1} minHeight={10}>
-					<Text>
-						{currentPhase === 'response' ? responseContent || 'Waiting for response...' : 
-						 currentPhase === 'waiting' ? `${responseContent}\n\n⏱️  Waiting ${intervalMs}ms before next iteration...` :
-						 'Preparing...'}
-					</Text>
+					{currentPhase === 'response' ? formatResponse() : 
+					 currentPhase === 'waiting' ? (
+						<Box flexDirection="column">
+							{formatResponse()}
+							<Text color="yellow">{'\n'}⏱️  Waiting {intervalMs}ms before next iteration...</Text>
+						</Box>
+					) : <Text>Preparing...</Text>}
 				</Box>
 			</Box>
 			
