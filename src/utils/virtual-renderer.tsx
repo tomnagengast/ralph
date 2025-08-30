@@ -2,7 +2,11 @@ import React, {useMemo, useCallback} from 'react';
 import {Box, Text} from 'ink';
 import {ClaudeStreamEvent} from '../types/claude-events.js';
 import {PerformanceConfig} from './performance-config.js';
-import {formatClaudeEvent, groupTextDeltas} from './claude-formatter.js';
+import {
+	formatClaudeEvent,
+	groupTextDeltas,
+	formatGroupedTextDeltas,
+} from './claude-formatter.js';
 import {EventFilterConfig, filterEvents} from './event-filter.js';
 
 interface VirtualRendererProps {
@@ -68,16 +72,16 @@ export const VirtualRenderer: React.FC<VirtualRendererProps> = ({
 	const renderEvent = useCallback(
 		(item: ClaudeStreamEvent | ClaudeStreamEvent[], index: number) => {
 			if (Array.isArray(item)) {
-				// Render grouped text deltas efficiently
-				const combinedText = item.map(e => e.delta?.text || '').join('');
+				// Render grouped text deltas efficiently using formatGroupedTextDeltas
+				const formattedText = formatGroupedTextDeltas(item);
 
 				// Truncate very long text for performance
 				const displayText =
 					config.auto_truncate &&
-					combinedText.length > config.max_text_length_per_event
-						? combinedText.substring(0, config.max_text_length_per_event) +
+					formattedText.length > config.max_text_length_per_event
+						? formattedText.substring(0, config.max_text_length_per_event) +
 						  '\n\n[... truncated ...]'
-						: combinedText;
+						: formattedText;
 
 				return (
 					<Text key={`group-${index}`} wrap="wrap">

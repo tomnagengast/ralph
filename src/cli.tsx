@@ -316,6 +316,15 @@ if (command === 'run') {
 		claudeArgs.push('--model', model);
 	}
 
+	// Add system prompt if .ralph/system.md exists
+	const systemPromptPath = '.ralph/system.md';
+	if (fs.existsSync(systemPromptPath)) {
+		claudeArgs.push('--append-system-prompt', systemPromptPath);
+		if (verbosity === 'debug' || verbosity === 'verbose') {
+			console.log(`✓ Using system prompt from ${systemPromptPath}`);
+		}
+	}
+
 	// Add flags from settings
 	const flags = settings.claude?.flags ?? [
 		'--dangerously-skip-permissions',

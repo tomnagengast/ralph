@@ -113,7 +113,8 @@ export default function RalphLoop({
 			setRawResponse('');
 
 			// Check if we're in JSON mode
-			const jsonMode = claudeArgs.includes('stream-json');
+			const jsonMode = claudeArgs.includes('--output-format') && 
+				claudeArgs[claudeArgs.indexOf('--output-format') + 1] === 'stream-json';
 			setIsJsonMode(jsonMode);
 
 			// Small delay to show prompt

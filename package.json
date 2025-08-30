@@ -17,6 +17,7 @@
 	],
 	"dependencies": {
 		"@types/marked-terminal": "^6.1.1",
+		"execa": "^8.0.1",
 		"ink": "^4.4.1",
 		"marked-terminal": "^7.3.0",
 		"react": "^18.3.1"
