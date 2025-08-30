@@ -9,7 +9,7 @@ const cli = meow(
 	`
 	Usage: ralph [options] [command] [prompt]
 
-	ralph - starts an interactive session by default, use -p/--print for non-interactive output
+	ralph - starts an interactive session
 
 	Arguments:
 	  prompt                                            Your prompt or path to prompt file
@@ -17,8 +17,8 @@ const cli = meow(
 	Options:
 	  -d, --debug [filter]                              Enable debug mode with optional category filtering (e.g., "api,hooks" or "!statsig,!file")
 	  --verbose                                         Override verbose mode setting from config
-	  -p, --print                                       Print responses (useful for pipes)
-	  --output-format <format>                          Output format (only works with --print): "text" (default), "json" (single result), or "stream-json" (realtime streaming)
+	  -p, --print                                       Provide prompt text (alternative to positional arguments)
+	  --output-format <format>                          Output format (reserved for future use): "text" (default), "json" (single result), or "stream-json" (realtime streaming)
 	  -c, --continue                                    Continue the most recent conversation
 	  -r, --resume [sessionId]                          Resume a conversation - provide a session ID or interactively select a conversation to resume
 	  --model <model>                                   Model for the current session. Provide an alias for the latest model (e.g. 'sonnet' or 'opus') or a model's full name
@@ -45,7 +45,7 @@ const cli = meow(
 				type: 'boolean',
 			},
 			print: {
-				type: 'boolean',
+				type: 'string',
 				shortFlag: 'p',
 			},
 			outputFormat: {
@@ -88,11 +88,31 @@ const cli = meow(
 
 // Get the command and prompt from input
 const command = cli.input[0];
-const promptArg = command && ['init', 'config', 'update'].includes(command) ? cli.input[1] : cli.input[0];
+
+// Handle prompt from various sources:
+// 1. Direct positional arguments (ralph hello there!)
+// 2. --print/-p flag value (ralph -p "hello there!" or ralph --print "hello there!")
+// 3. Command argument (ralph init, ralph config, etc.)
+let promptArg = '';
+if (command && ['init', 'config', 'update'].includes(command)) {
+	// For commands, prompt would be the second argument
+	promptArg = cli.input[1] || '';
+} else if (cli.flags.print && typeof cli.flags.print === 'string') {
+	// If --print has a value, use it as the prompt
+	promptArg = cli.flags.print;
+} else if ((cli.flags as any).p && typeof (cli.flags as any).p === 'string') {
+	// If -p has a value, use it as the prompt
+	promptArg = (cli.flags as any).p;
+} else if (cli.input.length > 0) {
+	// Use all positional arguments as the prompt
+	promptArg = cli.input.join(' ');
+}
 
 // Handle version flag
 if (cli.flags.version) {
-	const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+	const packageJson = JSON.parse(
+		fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
+	);
 	console.log(packageJson.version);
 	process.exit(0);
 }
@@ -153,24 +173,14 @@ if (command === 'init') {
 	process.exit(0);
 }
 
-// Handle main ralph command (interactive or non-interactive)
-const isInteractive = !cli.flags.print;
-
-// If no prompt provided and not in interactive mode, show help
-if (!promptArg && !isInteractive && !cli.flags.continue && !cli.flags.resume) {
-	cli.showHelp();
-	process.exit(1);
-}
-
+// Handle main ralph command - always interactive now
 const prompt = promptArg || '';
 
 // Pass all flags to the app
 const appProps = {
 	prompt,
-	isInteractive,
 	debug: cli.flags.debug,
 	verbose: cli.flags.verbose,
-	print: cli.flags.print,
 	outputFormat: cli.flags.outputFormat,
 	continue: cli.flags.continue,
 	resume: cli.flags.resume,
@@ -180,9 +190,5 @@ const appProps = {
 	sessionId: cli.flags.sessionId,
 };
 
-if (isInteractive) {
-	render(<App {...appProps} />);
-} else {
-	// Non-interactive mode - just render once and exit
-	render(<App {...appProps} />);
-}
+// Always render in interactive mode
+render(<App {...appProps} />);

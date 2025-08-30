@@ -4,10 +4,8 @@ import fs from 'fs';
 
 type Props = {
 	prompt: string;
-	isInteractive: boolean;
 	debug?: string;
 	verbose?: boolean;
-	print?: boolean;
 	outputFormat?: string;
 	continue?: boolean;
 	resume?: string;
@@ -20,11 +18,9 @@ type Props = {
 export default function App(props: Props) {
 	const {
 		prompt,
-		// isInteractive, // Will be used in future for interactive mode
 		debug,
 		verbose,
-		print,
-		outputFormat,
+		// outputFormat, // Will be used in future
 		continue: continueConversation,
 		resume,
 		model,
@@ -89,17 +85,13 @@ export default function App(props: Props) {
 				)}
 				{debug && (
 					<Text>
-						<Text bold>Debug:</Text> {typeof debug === 'boolean' ? 'enabled' : debug}
+						<Text bold>Debug:</Text>{' '}
+						{typeof debug === 'boolean' ? 'enabled' : debug}
 					</Text>
 				)}
 				{verbose && (
 					<Text>
 						<Text bold>Verbose:</Text> enabled
-					</Text>
-				)}
-				{print && (
-					<Text>
-						<Text bold>Mode:</Text> Non-interactive ({outputFormat || 'text'})
 					</Text>
 				)}
 				{addDir && addDir.length > 0 && (
