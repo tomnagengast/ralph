@@ -64,6 +64,7 @@
 ## Completed Tasks (2025-08-30 - Phase 3)
 
 ### Live Testing and Verification - COMPLETED ✅
+
 - **Status**: COMPLETED
 - **Date**: 2025-08-30
 - **Description**: Comprehensive testing and verification of Claude message formatting
@@ -206,6 +207,7 @@
 ## Next Priority Tasks
 
 1. **Performance and UX Enhancements**
+
    - Add configuration options for display verbosity
    - Implement filtering for specific event types
    - Add color scheme customization

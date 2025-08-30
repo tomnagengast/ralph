@@ -25,7 +25,7 @@ export function renderMarkdown(text: string): string {
 		result = result.replace(/^\s*(\d+)\. (.+)$/gm, '  $1. $2');
 
 		// Task lists
-		result = result.replace(/^\s*- \[x\] (.+)$/gmi, '  ✓ $1');
+		result = result.replace(/^\s*- \[x\] (.+)$/gim, '  ✓ $1');
 		result = result.replace(/^\s*- \[ \] (.+)$/gm, '  ☐ $1');
 
 		// Blockquotes
@@ -42,13 +42,17 @@ export function renderMarkdown(text: string): string {
 			const lines = code.split('\n');
 			// Remove trailing empty line if present
 			if (lines[lines.length - 1] === '') lines.pop();
-			
+
 			const maxLength = Math.max(...lines.map((l: string) => l.length), 20);
 			const border = '─'.repeat(maxLength + 2);
-			const formatted = lines.map((line: string) => '│ ' + line.padEnd(maxLength) + ' │').join('\n');
+			const formatted = lines
+				.map((line: string) => '│ ' + line.padEnd(maxLength) + ' │')
+				.join('\n');
 			const langLabel = lang ? ` ${lang} ` : ' code ';
-			
-			return `╭─${langLabel}${border.substring(langLabel.length)}╮\n${formatted}\n╰${border}──╯`;
+
+			return `╭─${langLabel}${border.substring(
+				langLabel.length,
+			)}╮\n${formatted}\n╰${border}──╯`;
 		});
 
 		// Inline code (preserve with better markers)
@@ -86,7 +90,7 @@ export function isMarkdown(text: string): boolean {
 		/\[[^\]]+\]\([^)]+\)/, // Links
 		/^\s*---+\s*$/m, // Horizontal rules
 		/^\s*\|.*\|/m, // Tables
-		/^\s*- \[(x| )\]/mi, // Task lists
+		/^\s*- \[(x| )\]/im, // Task lists
 	];
 
 	return markdownPatterns.some(pattern => pattern.test(text));

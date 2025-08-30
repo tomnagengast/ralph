@@ -14,12 +14,17 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 		const jsonStr = compact
 			? JSON.stringify(obj)
 			: JSON.stringify(obj, null, 2);
-		
+
 		// For simple values, return as-is
-		if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean' || obj === null) {
+		if (
+			typeof obj === 'string' ||
+			typeof obj === 'number' ||
+			typeof obj === 'boolean' ||
+			obj === null
+		) {
 			return <Text color="cyan">{jsonStr}</Text>;
 		}
-		
+
 		// For complex objects, format with syntax highlighting
 		return (
 			<Box flexDirection="column">
@@ -27,27 +32,36 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 					// Apply color coding based on content
 					let color: string | undefined;
 					let dimColor = false;
-					
+
 					if (line.includes('"') && line.includes(':')) {
 						// Property names
 						const parts = line.split(':');
 						const propName = parts[0];
 						const value = parts.slice(1).join(':');
-						
+
 						return (
 							<Text key={i}>
 								<Text color="magenta">{propName}</Text>
 								<Text dimColor>:</Text>
-								<Text color={value.includes('"') ? "green" : "cyan"}>
+								<Text color={value.includes('"') ? 'green' : 'cyan'}>
 									{value}
 								</Text>
 							</Text>
 						);
-					} else if (line.includes('{') || line.includes('}') || line.includes('[') || line.includes(']')) {
+					} else if (
+						line.includes('{') ||
+						line.includes('}') ||
+						line.includes('[') ||
+						line.includes(']')
+					) {
 						// Brackets
 						color = 'yellow';
 						dimColor = true;
-					} else if (line.includes('true') || line.includes('false') || line.includes('null')) {
+					} else if (
+						line.includes('true') ||
+						line.includes('false') ||
+						line.includes('null')
+					) {
 						// Boolean/null values
 						color = 'cyan';
 					} else if (/\d+/.test(line)) {
@@ -57,7 +71,7 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 						// Default
 						dimColor = true;
 					}
-					
+
 					return (
 						<Text key={i} color={color} dimColor={dimColor}>
 							{line}
@@ -78,15 +92,23 @@ const truncateText = (text: string, maxLength: number = 100): string => {
 };
 
 // Utility function to format token counts with cache information
-const formatTokenUsage = (usage: any, prefix: string = '') => {
+const formatTokenUsage = (
+	usage: any,
+	prefix: string = '',
+	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' = 'normal',
+) => {
 	if (!usage) return null;
+
+	// Don't show token usage in minimal mode
+	if (verbosity === 'minimal') return null;
 
 	return (
 		<Box flexDirection="column">
 			{usage.input_tokens && (
 				<Text dimColor>
 					{prefix}Input tokens: {usage.input_tokens}
-					{usage.cache_read_input_tokens
+					{(verbosity === 'verbose' || verbosity === 'debug') &&
+					usage.cache_read_input_tokens
 						? ` (${usage.cache_read_input_tokens} from cache)`
 						: ''}
 				</Text>
@@ -96,29 +118,33 @@ const formatTokenUsage = (usage: any, prefix: string = '') => {
 					{prefix}Output tokens: {usage.output_tokens}
 				</Text>
 			)}
-			{usage.cache_creation_input_tokens &&
+			{(verbosity === 'verbose' || verbosity === 'debug') &&
+				usage.cache_creation_input_tokens &&
 				usage.cache_creation_input_tokens > 0 && (
 					<Text dimColor>
 						{prefix}Cache created: {usage.cache_creation_input_tokens} tokens
 					</Text>
 				)}
-			{usage.cache_creation?.ephemeral_5m_input_tokens && (
-				<Text dimColor>
-					{prefix}Ephemeral 5m cache:{' '}
-					{usage.cache_creation.ephemeral_5m_input_tokens} tokens
-				</Text>
-			)}
-			{usage.cache_creation?.ephemeral_1h_input_tokens && (
-				<Text dimColor>
-					{prefix}Ephemeral 1h cache:{' '}
-					{usage.cache_creation.ephemeral_1h_input_tokens} tokens
-				</Text>
-			)}
-			{usage.service_tier && (
-				<Text dimColor>
-					{prefix}Service tier: {usage.service_tier}
-				</Text>
-			)}
+			{(verbosity === 'verbose' || verbosity === 'debug') &&
+				usage.cache_creation?.ephemeral_5m_input_tokens && (
+					<Text dimColor>
+						{prefix}Ephemeral 5m cache:{' '}
+						{usage.cache_creation.ephemeral_5m_input_tokens} tokens
+					</Text>
+				)}
+			{(verbosity === 'verbose' || verbosity === 'debug') &&
+				usage.cache_creation?.ephemeral_1h_input_tokens && (
+					<Text dimColor>
+						{prefix}Ephemeral 1h cache:{' '}
+						{usage.cache_creation.ephemeral_1h_input_tokens} tokens
+					</Text>
+				)}
+			{(verbosity === 'verbose' || verbosity === 'debug') &&
+				usage.service_tier && (
+					<Text dimColor>
+						{prefix}Service tier: {usage.service_tier}
+					</Text>
+				)}
 		</Box>
 	);
 };
@@ -127,79 +153,250 @@ const formatTokenUsage = (usage: any, prefix: string = '') => {
 export const formatClaudeEvent = (
 	event: ClaudeStreamEvent,
 	index: number,
+	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' = 'normal',
 ): React.ReactNode => {
+	// Early return for minimal verbosity - only show essential content
+	if (verbosity === 'minimal') {
+		switch (event.type) {
+			case ClaudeEventType.CONTENT_BLOCK_DELTA:
+				if (event.delta?.type === DeltaType.TEXT_DELTA && event.delta.text) {
+					return (
+						<Text key={index} wrap="wrap">
+							{smartRenderText(event.delta.text)}
+						</Text>
+					);
+				}
+				return null;
+			case ClaudeEventType.ERROR:
+			case ClaudeEventType.OVERLOADED_ERROR:
+			case ClaudeEventType.INVALID_REQUEST_ERROR:
+			case ClaudeEventType.AUTHENTICATION_ERROR:
+			case ClaudeEventType.PERMISSION_ERROR:
+			case ClaudeEventType.NOT_FOUND_ERROR:
+			case ClaudeEventType.REQUEST_TOO_LARGE:
+			case ClaudeEventType.RATE_LIMIT_ERROR:
+			case ClaudeEventType.API_ERROR:
+				const isOverloaded = event.type === ClaudeEventType.OVERLOADED_ERROR;
+				return (
+					<Box key={index} flexDirection="column" marginY={1}>
+						<Text bold color="red">
+							⚠️ {isOverloaded ? 'API OVERLOADED' : 'ERROR OCCURRED'}
+						</Text>
+						<Box paddingLeft={2}>
+							<Text color="red">
+								{typeof event.error === 'string'
+									? event.error
+									: event.error?.message || 'Unknown error occurred'}
+							</Text>
+						</Box>
+					</Box>
+				);
+			case ClaudeEventType.RESULT:
+				if (event.result) {
+					return (
+						<Box key={index} marginTop={1}>
+							<Text wrap="wrap">{smartRenderText(event.result)}</Text>
+						</Box>
+					);
+				}
+				return null;
+			default:
+				return null;
+		}
+	}
+
 	switch (event.type) {
 		case ClaudeEventType.MESSAGE_START:
-			return (
-				<Box key={index} flexDirection="column" marginBottom={1}>
-					<Box borderStyle="round" borderColor="magenta" paddingX={1}>
-						<Text bold color="magenta">
-							╭─ 📬 MESSAGE STARTED ─╮
-						</Text>
-					</Box>
-					{event.message && (
-						<Box paddingLeft={2} flexDirection="column">
-							{event.message.model && (
-								<Text>
-									<Text color="blue">Model:</Text>
-									<Text color="cyan"> {event.message.model}</Text>
-								</Text>
-							)}
-							{event.message.id && (
-								<Text>
-									<Text color="blue">ID:</Text>
-									<Text dimColor> {event.message.id}</Text>
-								</Text>
-							)}
-							{formatTokenUsage(event.message.usage)}
+			if (verbosity === 'debug') {
+				return (
+					<Box key={index} flexDirection="column" marginBottom={1}>
+						<Box borderStyle="round" borderColor="magenta" paddingX={1}>
+							<Text bold color="magenta">
+								╭─ 📬 MESSAGE STARTED ─╮
+							</Text>
 						</Box>
-					)}
-				</Box>
-			);
+						{event.message && (
+							<Box paddingLeft={2} flexDirection="column">
+								{event.message.model && (
+									<Text>
+										<Text color="blue">Model:</Text>
+										<Text color="cyan"> {event.message.model}</Text>
+									</Text>
+								)}
+								{event.message.id && (
+									<Text>
+										<Text color="blue">ID:</Text>
+										<Text dimColor> {event.message.id}</Text>
+									</Text>
+								)}
+								{formatTokenUsage(event.message.usage, '', verbosity)}
+								<Box marginTop={0.5}>
+									<Text dimColor bold>
+										DEBUG - Raw Event:
+									</Text>
+									<Box paddingLeft={2}>{formatJson(event)}</Box>
+								</Box>
+							</Box>
+						)}
+					</Box>
+				);
+			} else if (verbosity === 'verbose') {
+				return (
+					<Box key={index} flexDirection="column" marginBottom={1}>
+						<Box borderStyle="round" borderColor="magenta" paddingX={1}>
+							<Text bold color="magenta">
+								╭─ 📬 MESSAGE STARTED ─╮
+							</Text>
+						</Box>
+						{event.message && (
+							<Box paddingLeft={2} flexDirection="column">
+								{event.message.model && (
+									<Text>
+										<Text color="blue">Model:</Text>
+										<Text color="cyan"> {event.message.model}</Text>
+									</Text>
+								)}
+								{event.message.id && (
+									<Text>
+										<Text color="blue">ID:</Text>
+										<Text dimColor> {event.message.id}</Text>
+									</Text>
+								)}
+								{formatTokenUsage(event.message.usage, '', verbosity)}
+							</Box>
+						)}
+					</Box>
+				);
+			} else {
+				// Normal verbosity - simplified display
+				return (
+					<Box key={index} marginBottom={0.5}>
+						<Text bold color="magenta">
+							📬 Message Started
+						</Text>
+						{event.message?.model && (
+							<Text dimColor> ({event.message.model})</Text>
+						)}
+					</Box>
+				);
+			}
 
 		case ClaudeEventType.CONTENT_BLOCK_START:
-			return (
-				<Box key={index} marginBottom={0.5}>
-					<Text color="cyan">
-						▶ Content Block{event.index !== undefined ? ` #${event.index}` : ''}
-					</Text>
-					{event.content_block && (
-						<>
-							{event.content_block.type === ContentBlockType.TOOL_USE && (
-								<Text color="yellow"> 🔧 Tool: {event.content_block.name}</Text>
-							)}
-							{event.content_block.type === ContentBlockType.THINKING && (
-								<Text color="blue"> 🤔 Thinking...</Text>
-							)}
-							{event.content_block.type === ContentBlockType.IMAGE && (
-								<Text color="magenta"> 🖼️ Image</Text>
-							)}
-							{event.content_block.type === ContentBlockType.DOCUMENT && (
-								<Text color="green">
-									{' '}
-									📄 Document: {event.content_block.document?.name}
-								</Text>
-							)}
-							{event.content_block.type === ContentBlockType.WEB_SEARCH && (
-								<Text color="cyan"> 🌐 Web Search</Text>
-							)}
-							{event.content_block.type ===
-								ContentBlockType.SERVER_TOOL_USE && (
-								<Text color="orange">
-									{' '}
-									🔨 Server Tool: {event.content_block.name}
-								</Text>
-							)}
-							{event.content_block.type === ContentBlockType.REDACTED_THINKING && (
-								<Text color="red">
-									{' '}
-									🔒 Redacted Thinking (Safety)
-								</Text>
-							)}
-						</>
-					)}
-				</Box>
-			);
+			if (verbosity === 'debug') {
+				return (
+					<Box key={index} flexDirection="column" marginBottom={0.5}>
+						<Text color="cyan">
+							▶ Content Block
+							{event.index !== undefined ? ` #${event.index}` : ''}
+						</Text>
+						{event.content_block && (
+							<>
+								{event.content_block.type === ContentBlockType.TOOL_USE && (
+									<Text color="yellow">
+										{' '}
+										🔧 Tool: {event.content_block.name}
+									</Text>
+								)}
+								{event.content_block.type === ContentBlockType.THINKING && (
+									<Text color="blue"> 🤔 Thinking...</Text>
+								)}
+								{event.content_block.type === ContentBlockType.IMAGE && (
+									<Text color="magenta"> 🖼️ Image</Text>
+								)}
+								{event.content_block.type === ContentBlockType.DOCUMENT && (
+									<Text color="green">
+										{' '}
+										📄 Document: {event.content_block.document?.name}
+									</Text>
+								)}
+								{event.content_block.type === ContentBlockType.WEB_SEARCH && (
+									<Text color="cyan"> 🌐 Web Search</Text>
+								)}
+								{event.content_block.type ===
+									ContentBlockType.SERVER_TOOL_USE && (
+									<Text color="orange">
+										{' '}
+										🔨 Server Tool: {event.content_block.name}
+									</Text>
+								)}
+								{event.content_block.type ===
+									ContentBlockType.REDACTED_THINKING && (
+									<Text color="red"> 🔒 Redacted Thinking (Safety)</Text>
+								)}
+							</>
+						)}
+						<Box marginTop={0.5} paddingLeft={2}>
+							<Text dimColor bold>
+								DEBUG - Raw Event:
+							</Text>
+							<Box paddingLeft={2}>{formatJson(event)}</Box>
+						</Box>
+					</Box>
+				);
+			} else if (verbosity === 'verbose') {
+				return (
+					<Box key={index} marginBottom={0.5}>
+						<Text color="cyan">
+							▶ Content Block
+							{event.index !== undefined ? ` #${event.index}` : ''}
+						</Text>
+						{event.content_block && (
+							<>
+								{event.content_block.type === ContentBlockType.TOOL_USE && (
+									<Text color="yellow">
+										{' '}
+										🔧 Tool: {event.content_block.name}
+									</Text>
+								)}
+								{event.content_block.type === ContentBlockType.THINKING && (
+									<Text color="blue"> 🤔 Thinking...</Text>
+								)}
+								{event.content_block.type === ContentBlockType.IMAGE && (
+									<Text color="magenta"> 🖼️ Image</Text>
+								)}
+								{event.content_block.type === ContentBlockType.DOCUMENT && (
+									<Text color="green">
+										{' '}
+										📄 Document: {event.content_block.document?.name}
+									</Text>
+								)}
+								{event.content_block.type === ContentBlockType.WEB_SEARCH && (
+									<Text color="cyan"> 🌐 Web Search</Text>
+								)}
+								{event.content_block.type ===
+									ContentBlockType.SERVER_TOOL_USE && (
+									<Text color="orange">
+										{' '}
+										🔨 Server Tool: {event.content_block.name}
+									</Text>
+								)}
+								{event.content_block.type ===
+									ContentBlockType.REDACTED_THINKING && (
+									<Text color="red"> 🔒 Redacted Thinking (Safety)</Text>
+								)}
+							</>
+						)}
+					</Box>
+				);
+			} else {
+				// Normal verbosity - show important block types only
+				if (event.content_block) {
+					if (event.content_block.type === ContentBlockType.TOOL_USE) {
+						return (
+							<Text key={index} color="yellow">
+								🔧 Tool: {event.content_block.name}
+							</Text>
+						);
+					} else if (event.content_block.type === ContentBlockType.THINKING) {
+						return (
+							<Text key={index} color="blue">
+								🤔 Thinking...
+							</Text>
+						);
+					}
+				}
+				return null;
+			}
 
 		case ClaudeEventType.CONTENT_BLOCK_DELTA:
 			if (event.delta?.type === DeltaType.TEXT_DELTA && event.delta.text) {
@@ -269,7 +466,7 @@ export const formatClaudeEvent = (
 							{event.delta.stop_reason && (
 								<Text>Stop reason: {event.delta.stop_reason}</Text>
 							)}
-							{formatTokenUsage(event.delta.usage)}
+							{formatTokenUsage(event.delta.usage, '', verbosity)}
 						</Box>
 					</Box>
 				);
@@ -277,20 +474,50 @@ export const formatClaudeEvent = (
 			return null;
 
 		case ClaudeEventType.MESSAGE_STOP:
-			return (
-				<Box key={index} marginTop={1} borderStyle="round" borderColor="green" paddingX={1}>
-					<Text bold color="green">
-						╰─ ✅ Message Complete ─╯
+			if (verbosity === 'debug' || verbosity === 'verbose') {
+				return (
+					<Box
+						key={index}
+						marginTop={1}
+						borderStyle="round"
+						borderColor="green"
+						paddingX={1}
+					>
+						<Text bold color="green">
+							╰─ ✅ Message Complete ─╯
+						</Text>
+						{verbosity === 'debug' && (
+							<Box marginTop={0.5} paddingLeft={2}>
+								<Text dimColor bold>
+									DEBUG - Raw Event:
+								</Text>
+								<Box paddingLeft={2}>{formatJson(event)}</Box>
+							</Box>
+						)}
+					</Box>
+				);
+			} else if (verbosity === 'normal') {
+				return (
+					<Text key={index} color="green" bold>
+						✅ Complete
 					</Text>
-				</Box>
-			);
+				);
+			} else {
+				// Minimal - don't show completion message
+				return null;
+			}
 
 		case ClaudeEventType.PING:
-			return (
-				<Text key={index} dimColor>
-					• ping
-				</Text>
-			);
+			if (verbosity === 'debug') {
+				return (
+					<Text key={index} dimColor>
+						• ping
+					</Text>
+				);
+			} else {
+				// Don't show pings in other verbosity levels
+				return null;
+			}
 
 		case ClaudeEventType.ERROR:
 		case ClaudeEventType.OVERLOADED_ERROR:
@@ -324,40 +551,45 @@ export const formatClaudeEvent = (
 							)}
 						{isOverloaded && (
 							<Box marginTop={0.5}>
-								<Text color="yellow">
-									🔄 Please retry in a few moments...
-								</Text>
+								<Text color="yellow">🔄 Please retry in a few moments...</Text>
 							</Box>
 						)}
-						{event.error && typeof event.error === 'object' && event.error.retry_after && (
-							<Box marginTop={0.5}>
-								<Text color="yellow">
-									⏰ Retry after: {event.error.retry_after}s
-								</Text>
-							</Box>
-						)}
-						{event.error && typeof event.error === 'object' && event.error.rate_limit && (
-							<Box marginTop={0.5} flexDirection="column">
-								<Text color="yellow" bold>
-									🚦 Rate Limit Information:
-								</Text>
-								{event.error.rate_limit.requests && (
-									<Text color="yellow" dimColor>
-										  Requests remaining: {event.error.rate_limit.requests}
+						{event.error &&
+							typeof event.error === 'object' &&
+							event.error.retry_after && (
+								<Box marginTop={0.5}>
+									<Text color="yellow">
+										⏰ Retry after: {event.error.retry_after}s
 									</Text>
-								)}
-								{event.error.rate_limit.tokens && (
-									<Text color="yellow" dimColor>
-										  Tokens remaining: {event.error.rate_limit.tokens}
+								</Box>
+							)}
+						{event.error &&
+							typeof event.error === 'object' &&
+							event.error.rate_limit && (
+								<Box marginTop={0.5} flexDirection="column">
+									<Text color="yellow" bold>
+										🚦 Rate Limit Information:
 									</Text>
-								)}
-								{event.error.rate_limit.reset_at && (
-									<Text color="yellow" dimColor>
-										  Resets at: {new Date(event.error.rate_limit.reset_at).toLocaleString()}
-									</Text>
-								)}
-							</Box>
-						)}
+									{event.error.rate_limit.requests && (
+										<Text color="yellow" dimColor>
+											Requests remaining: {event.error.rate_limit.requests}
+										</Text>
+									)}
+									{event.error.rate_limit.tokens && (
+										<Text color="yellow" dimColor>
+											Tokens remaining: {event.error.rate_limit.tokens}
+										</Text>
+									)}
+									{event.error.rate_limit.reset_at && (
+										<Text color="yellow" dimColor>
+											Resets at:{' '}
+											{new Date(
+												event.error.rate_limit.reset_at,
+											).toLocaleString()}
+										</Text>
+									)}
+								</Box>
+							)}
 					</Box>
 				</Box>
 			);
@@ -374,10 +606,16 @@ export const formatClaudeEvent = (
 						<Box paddingLeft={2} flexDirection="column" marginTop={0.5}>
 							{event.duration_ms && (
 								<Text>
-									<Text color="yellow">⏱️  Duration:</Text>
-									<Text color="cyan"> {(event.duration_ms / 1000).toFixed(1)}s</Text>
+									<Text color="yellow">⏱️ Duration:</Text>
+									<Text color="cyan">
+										{' '}
+										{(event.duration_ms / 1000).toFixed(1)}s
+									</Text>
 									{event.duration_api_ms && (
-										<Text dimColor> (API: {(event.duration_api_ms / 1000).toFixed(1)}s)</Text>
+										<Text dimColor>
+											{' '}
+											(API: {(event.duration_api_ms / 1000).toFixed(1)}s)
+										</Text>
 									)}
 								</Text>
 							)}
@@ -399,9 +637,14 @@ export const formatClaudeEvent = (
 									<Text dimColor> {truncateText(event.session_id, 16)}</Text>
 								</Text>
 							)}
-							{formatTokenUsage(event.usage)}
+							{formatTokenUsage(event.usage, '', verbosity)}
 							{event.result && (
-								<Box marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
+								<Box
+									marginTop={1}
+									borderStyle="single"
+									borderColor="gray"
+									paddingX={1}
+								>
 									<Text wrap="wrap">{smartRenderText(event.result)}</Text>
 								</Box>
 							)}
@@ -466,7 +709,9 @@ export const formatClaudeEvent = (
 					{event.message && (
 						<Box paddingLeft={2}>
 							{typeof event.message.content === 'string' ? (
-								<Text wrap="wrap">{smartRenderText(event.message.content)}</Text>
+								<Text wrap="wrap">
+									{smartRenderText(event.message.content)}
+								</Text>
 							) : (
 								<Box>{formatJson(event.message.content)}</Box>
 							)}
@@ -494,9 +739,7 @@ export const formatClaudeEvent = (
 									return (
 										<Box key={i} flexDirection="column">
 											<Text color="yellow">🔧 Using tool: {content.name}</Text>
-											<Box paddingLeft={2}>
-												{formatJson(content.input)}
-											</Box>
+											<Box paddingLeft={2}>{formatJson(content.input)}</Box>
 										</Box>
 									);
 								} else if (content.type === ContentBlockType.THINKING) {
@@ -510,7 +753,9 @@ export const formatClaudeEvent = (
 											</Box>
 										</Box>
 									);
-								} else if (content.type === ContentBlockType.REDACTED_THINKING) {
+								} else if (
+									content.type === ContentBlockType.REDACTED_THINKING
+								) {
 									return (
 										<Box key={i} flexDirection="column">
 											<Text color="red">🔒 Redacted Thinking</Text>
@@ -535,9 +780,7 @@ export const formatClaudeEvent = (
 				<Box key={index} flexDirection="column" marginY={0.5}>
 					<Text color="yellow">🔧 Tool Use: {event.tool_name}</Text>
 					{event.tool_input && (
-						<Box paddingLeft={2}>
-							{formatJson(event.tool_input)}
-						</Box>
+						<Box paddingLeft={2}>{formatJson(event.tool_input)}</Box>
 					)}
 				</Box>
 			);
@@ -575,21 +818,21 @@ export const formatClaudeEvent = (
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.TOOL_USE_DELTA:
 			return (
 				<Text key={index} color="yellow" dimColor>
 					{event.delta?.partial_json || ''}
 				</Text>
 			);
-			
+
 		case ClaudeEventType.TOOL_USE_STOP:
 			return (
 				<Box key={index} marginBottom={0.5}>
 					<Text dimColor>🔧 Tool Stream End</Text>
 				</Box>
 			);
-		
+
 		// Extended thinking events (Claude 4)
 		case ClaudeEventType.THINKING_BLOCK_START:
 			return (
@@ -599,30 +842,31 @@ export const formatClaudeEvent = (
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.THINKING_BLOCK_DELTA:
 			return (
 				<Text key={index} color="blue" dimColor wrap="wrap">
 					{smartRenderText(event.delta?.text || '')}
 				</Text>
 			);
-			
+
 		case ClaudeEventType.THINKING_BLOCK_SIGNATURE:
 			return (
 				<Box key={index} marginTop={0.5}>
 					<Text dimColor>
-						✓ Thinking verified: {truncateText(event.delta?.signature || '', 16)}...
+						✓ Thinking verified:{' '}
+						{truncateText(event.delta?.signature || '', 16)}...
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.THINKING_BLOCK_STOP:
 			return (
 				<Box key={index} marginBottom={0.5}>
 					<Text dimColor>🧠 Thinking Complete</Text>
 				</Box>
 			);
-		
+
 		// Search result events
 		case ClaudeEventType.SEARCH_RESULT_START:
 			return (
@@ -632,7 +876,7 @@ export const formatClaudeEvent = (
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.SEARCH_RESULT_DELTA:
 			return (
 				<Box key={index} paddingLeft={2}>
@@ -641,14 +885,14 @@ export const formatClaudeEvent = (
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.SEARCH_RESULT_STOP:
 			return (
 				<Box key={index} marginBottom={0.5}>
 					<Text dimColor>🔍 Search Complete</Text>
 				</Box>
 			);
-		
+
 		// Code execution events (Claude 4)
 		case ClaudeEventType.CODE_START:
 			return (
@@ -660,32 +904,33 @@ export const formatClaudeEvent = (
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.CODE_OUTPUT:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text color="gray">
-						{event.content || event.text || ''}
-					</Text>
+					<Text color="gray">{event.content || event.text || ''}</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.CODE_ERROR:
 			return (
 				<Box key={index} paddingLeft={2}>
 					<Text color="red">
-						❌ Code Error: {typeof event.error === 'string' ? event.error : (event.error?.message || event.content || '')}
+						❌ Code Error:{' '}
+						{typeof event.error === 'string'
+							? event.error
+							: event.error?.message || event.content || ''}
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.CODE_STOP:
 			return (
 				<Box key={index} marginBottom={0.5}>
 					<Text dimColor>💻 Execution Complete</Text>
 				</Box>
 			);
-		
+
 		// File processing events
 		case ClaudeEventType.FILE_START:
 			return (
@@ -695,67 +940,67 @@ export const formatClaudeEvent = (
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.FILE_CHUNK:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text dimColor>
-						{truncateText(event.content || '', 100)}
-					</Text>
+					<Text dimColor>{truncateText(event.content || '', 100)}</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.FILE_ERROR:
 			return (
 				<Box key={index} paddingLeft={2}>
 					<Text color="red">
-						❌ File Error: {typeof event.error === 'string' ? event.error : (event.error?.message || event.content || '')}
+						❌ File Error:{' '}
+						{typeof event.error === 'string'
+							? event.error
+							: event.error?.message || event.content || ''}
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.FILE_STOP:
 			return (
 				<Box key={index} marginBottom={0.5}>
 					<Text dimColor>📁 File Processing Complete</Text>
 				</Box>
 			);
-		
+
 		// Connection events
 		case ClaudeEventType.CONNECTION_START:
 			return (
 				<Box key={index} marginY={0.5}>
-					<Text color="green">
-						🔗 Connection Established
-					</Text>
+					<Text color="green">🔗 Connection Established</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.CONNECTION_PING:
 			return (
 				<Text key={index} dimColor>
 					• connection ping
 				</Text>
 			);
-			
+
 		case ClaudeEventType.CONNECTION_ERROR:
 			return (
 				<Box key={index} marginY={0.5}>
 					<Text color="red">
-						❌ Connection Error: {typeof event.error === 'string' ? event.error : (event.error?.message || 'Unknown error')}
+						❌ Connection Error:{' '}
+						{typeof event.error === 'string'
+							? event.error
+							: event.error?.message || 'Unknown error'}
 					</Text>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.CONNECTION_CLOSE:
 			return (
 				<Box key={index} marginY={0.5}>
-					<Text color="yellow">
-						🔗 Connection Closed
-					</Text>
+					<Text color="yellow">🔗 Connection Closed</Text>
 				</Box>
 			);
-		
+
 		// Specific error types
 		case ClaudeEventType.INVALID_REQUEST_ERROR:
 			return (
@@ -764,11 +1009,16 @@ export const formatClaudeEvent = (
 						⚠️ Invalid Request (400)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Request format or content is invalid')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message ||
+								  'Request format or content is invalid'}
+						</Text>
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.AUTHENTICATION_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -776,11 +1026,15 @@ export const formatClaudeEvent = (
 						🔒 Authentication Failed (401)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'API key is invalid or missing')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message || 'API key is invalid or missing'}
+						</Text>
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.PERMISSION_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -788,11 +1042,16 @@ export const formatClaudeEvent = (
 						🚫 Permission Denied (403)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Insufficient permissions for this operation')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message ||
+								  'Insufficient permissions for this operation'}
+						</Text>
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.NOT_FOUND_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -800,11 +1059,15 @@ export const formatClaudeEvent = (
 						❓ Not Found (404)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Resource not found')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message || 'Resource not found'}
+						</Text>
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.REQUEST_TOO_LARGE:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -812,11 +1075,15 @@ export const formatClaudeEvent = (
 						📦 Request Too Large (413)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Request exceeds 32MB limit')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message || 'Request exceeds 32MB limit'}
+						</Text>
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.RATE_LIMIT_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -824,14 +1091,18 @@ export const formatClaudeEvent = (
 						⏱️ Rate Limit Exceeded (429)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Too many requests, please slow down')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message || 'Too many requests, please slow down'}
+						</Text>
 						{event['retry_after'] && (
 							<Text color="yellow">Retry after: {event['retry_after']}s</Text>
 						)}
 					</Box>
 				</Box>
 			);
-			
+
 		case ClaudeEventType.API_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
@@ -839,7 +1110,11 @@ export const formatClaudeEvent = (
 						💥 API Error (500)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Internal Anthropic system error')}</Text>
+						<Text color="red">
+							{typeof event.error === 'string'
+								? event.error
+								: event.error?.message || 'Internal Anthropic system error'}
+						</Text>
 						<Text color="yellow">Please try again later</Text>
 					</Box>
 				</Box>
@@ -855,19 +1130,33 @@ export const formatClaudeEvent = (
 			);
 
 		default:
-			// For unknown event types, show raw JSON in dimmed text with better formatting
-			return (
-				<Box key={index} marginY={0.5} flexDirection="column">
-					{event.type && (
-						<Text dimColor bold>
-							[{event.type}]
-						</Text>
-					)}
-					<Box paddingLeft={2}>
-						{formatJson(event)}
+			// For unknown event types, show based on verbosity
+			if (verbosity === 'debug') {
+				return (
+					<Box key={index} marginY={0.5} flexDirection="column">
+						{event.type && (
+							<Text dimColor bold>
+								[{event.type}] - DEBUG MODE
+							</Text>
+						)}
+						<Box paddingLeft={2}>{formatJson(event)}</Box>
 					</Box>
-				</Box>
-			);
+				);
+			} else if (verbosity === 'verbose') {
+				return (
+					<Box key={index} marginY={0.5} flexDirection="column">
+						{event.type && (
+							<Text dimColor bold>
+								[{event.type}]
+							</Text>
+						)}
+						<Box paddingLeft={2}>{formatJson(event, true)}</Box>
+					</Box>
+				);
+			} else {
+				// Normal and minimal - don't show unknown events
+				return null;
+			}
 	}
 };
 

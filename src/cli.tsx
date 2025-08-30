@@ -35,6 +35,7 @@ if (args.includes('-h') || args.includes('--help') || !command) {
   Options for 'run':
     -p, --prompt <file>           Path to prompt file (default: .ralph/prompt.md)
     -m, --model <model>           Model to use (e.g. 'sonnet' or 'opus')
+    --verbosity <level>           Display verbosity: minimal, normal, verbose, debug
     -v, --version                 Output the version number
     -h, --help                    Display help for command
 
@@ -90,6 +91,9 @@ if (command === 'init') {
 				'stream-json',
 			],
 		},
+		display: {
+			verbosity: 'normal',
+		},
 	};
 
 	const defaultPrompt = `# Default Prompt
@@ -116,6 +120,7 @@ if (command === 'run') {
 	// Parse flags
 	let promptPath = '.ralph/prompt.md';
 	let model: string | undefined;
+	let verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' | undefined;
 
 	for (let i = 1; i < args.length; i++) {
 		if ((args[i] === '-p' || args[i] === '--prompt') && args[i + 1]) {
@@ -123,6 +128,17 @@ if (command === 'run') {
 			i++;
 		} else if ((args[i] === '-m' || args[i] === '--model') && args[i + 1]) {
 			model = args[i + 1]!;
+			i++;
+		} else if (args[i] === '--verbosity' && args[i + 1]) {
+			const level = args[i + 1]!;
+			if (['minimal', 'normal', 'verbose', 'debug'].includes(level)) {
+				verbosity = level as 'minimal' | 'normal' | 'verbose' | 'debug';
+			} else {
+				console.error(
+					`Error: Invalid verbosity level "${level}". Must be one of: minimal, normal, verbose, debug`,
+				);
+				process.exit(1);
+			}
 			i++;
 		}
 	}
@@ -167,6 +183,8 @@ if (command === 'run') {
 
 	const intervalMs = settings.run?.interval_ms ?? 1000;
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
+	const settingsVerbosity = settings.display?.verbosity || 'normal';
+	const finalVerbosity = verbosity ?? settingsVerbosity;
 
 	// Render the Ink app
 	render(
@@ -175,6 +193,7 @@ if (command === 'run') {
 			claudeArgs={claudeArgs}
 			intervalMs={intervalMs}
 			autoStopAfterErrors={autoStopAfterErrors}
+			verbosity={finalVerbosity}
 		/>,
 	);
 } else {

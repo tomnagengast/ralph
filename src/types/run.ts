@@ -5,6 +5,7 @@ export interface RunConfig {
 	autoStopAfterErrors?: number;
 	maxCostUsd?: number;
 	outputFormat?: 'formatted' | 'raw' | 'minimal';
+	verbosity?: 'minimal' | 'normal' | 'verbose' | 'debug';
 	showStatistics?: boolean;
 	truncateOutput?: boolean;
 	maxOutputLines?: number;

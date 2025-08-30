@@ -16,6 +16,7 @@ interface Props {
 	claudeArgs: string[];
 	intervalMs: number;
 	autoStopAfterErrors: number;
+	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug';
 }
 
 export default function RalphLoop({
@@ -23,6 +24,7 @@ export default function RalphLoop({
 	claudeArgs,
 	intervalMs,
 	autoStopAfterErrors,
+	verbosity,
 }: Props) {
 	const {exit} = useApp();
 	const [iterationCount, setIterationCount] = useState(0);
@@ -158,7 +160,7 @@ export default function RalphLoop({
 								</Text>
 							);
 						} else {
-							return formatClaudeEvent(item, i);
+							return formatClaudeEvent(item, i, verbosity);
 						}
 					})}
 				</Box>
