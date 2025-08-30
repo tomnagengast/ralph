@@ -19,6 +19,11 @@ interface StreamJsonEvent {
 			output_tokens?: number;
 			cache_creation_input_tokens?: number;
 			cache_read_input_tokens?: number;
+			cache_creation?: {
+				ephemeral_5m_input_tokens?: number;
+				ephemeral_1h_input_tokens?: number;
+			};
+			service_tier?: string;
 		};
 	};
 	// Content block events
@@ -29,6 +34,17 @@ interface StreamJsonEvent {
 		name?: string;
 		input?: any;
 		text?: string;
+		// Image block
+		image?: {
+			media_type?: string;
+			data?: string;
+		};
+		// Document block
+		document?: {
+			name?: string;
+			media_type?: string;
+			data?: string;
+		};
 	};
 	// Delta events
 	delta?: {
@@ -46,13 +62,38 @@ interface StreamJsonEvent {
 	error?: {
 		type?: string;
 		message?: string;
+		code?: string;
 	};
+	// Result event (for CLI completion)
+	subtype?: string;
+	is_error?: boolean;
+	duration_ms?: number;
+	duration_api_ms?: number;
+	num_turns?: number;
+	total_cost_usd?: number;
+	result?: string;
+	session_id?: string;
+	uuid?: string;
+	usage?: any;
+	permission_denials?: any[];
+	// User message events
+	parent_tool_use_id?: string | null;
 	// Legacy/simple fields
 	content?: string;
 	text?: string;
 	tool_name?: string;
 	tool_input?: any;
 	tool_result?: any;
+	tool_use_id?: string;
+	// System events
+	cwd?: string;
+	tools?: string[];
+	mcp_servers?: any[];
+	model?: string;
+	permissionMode?: string;
+	slash_commands?: string[];
+	apiKeySource?: string;
+	output_style?: string;
 	[key: string]: any;
 }
 
@@ -196,9 +237,25 @@ export default function RalphLoop({
 							<Box paddingLeft={2} flexDirection="column">
 								<Text dimColor>Model: {event.message.model}</Text>
 								{event.message.usage && (
-									<Text dimColor>
-										Input tokens: {event.message.usage.input_tokens}
-									</Text>
+									<>
+										<Text dimColor>
+											Input tokens: {event.message.usage.input_tokens}
+											{event.message.usage.cache_read_input_tokens
+												? ` (${event.message.usage.cache_read_input_tokens} from cache)`
+												: ''}
+										</Text>
+										{event.message.usage.cache_creation_input_tokens && 
+										 event.message.usage.cache_creation_input_tokens > 0 && (
+											<Text dimColor>
+												Cache created: {event.message.usage.cache_creation_input_tokens} tokens
+											</Text>
+										)}
+										{event.message.usage.service_tier && (
+											<Text dimColor>
+												Tier: {event.message.usage.service_tier}
+											</Text>
+										)}
+									</>
 								)}
 							</Box>
 						)}
@@ -217,6 +274,12 @@ export default function RalphLoop({
 						)}
 						{event.content_block?.type === 'thinking' && (
 							<Text color="blue"> 🤔 Thinking...</Text>
+						)}
+						{event.content_block?.type === 'image' && (
+							<Text color="magenta"> 🖼️ Image</Text>
+						)}
+						{event.content_block?.type === 'document' && (
+							<Text color="green"> 📄 Document: {event.content_block.document?.name}</Text>
 						)}
 					</Box>
 				);
@@ -300,14 +363,24 @@ export default function RalphLoop({
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
 						<Text bold color="red">
-							❌ Error
+							❌ {event.type === 'overloaded_error' ? 'API Overloaded' : 'Error'}
 						</Text>
-						<Box paddingLeft={2}>
+						<Box paddingLeft={2} flexDirection="column">
 							<Text color="red">
 								{typeof event.error === 'string'
 									? event.error
 									: event.error?.message || 'Unknown error occurred'}
 							</Text>
+							{event.error?.code && (
+								<Text color="red" dimColor>
+									Error code: {event.error.code}
+								</Text>
+							)}
+							{event.type === 'overloaded_error' && (
+								<Text color="yellow" dimColor>
+									Try again in a few moments...
+								</Text>
+							)}
 						</Box>
 					</Box>
 				);
@@ -338,10 +411,141 @@ export default function RalphLoop({
 			case 'tool_result':
 				return (
 					<Box key={index} flexDirection="column" marginY={0.5}>
-						<Text color="cyan">📋 Tool Result</Text>
+						<Text color="cyan">
+							📋 Tool Result
+							{event.tool_use_id && (
+								<Text dimColor> (ID: {event.tool_use_id.substring(0, 8)}...)</Text>
+							)}
+						</Text>
 						<Box paddingLeft={2}>
-							<Text>{JSON.stringify(event.tool_result, null, 2)}</Text>
+							<Text>{JSON.stringify(event.tool_result || event.content, null, 2)}</Text>
 						</Box>
+					</Box>
+				);
+
+			// Result event (final summary from Claude CLI)
+			case 'result':
+				if (event.subtype === 'success') {
+					return (
+						<Box key={index} flexDirection="column" marginY={1}>
+							<Text bold color="green">
+								✅ Task Complete
+							</Text>
+							<Box paddingLeft={2} flexDirection="column">
+								{event.duration_ms && (
+									<Text dimColor>
+										⏱️ Duration: {(event.duration_ms / 1000).toFixed(1)}s
+										{event.duration_api_ms && ` (API: ${(event.duration_api_ms / 1000).toFixed(1)}s)`}
+									</Text>
+								)}
+								{event.num_turns && (
+									<Text dimColor>🔄 Turns: {event.num_turns}</Text>
+								)}
+								{event.total_cost_usd && (
+									<Text dimColor>💰 Cost: ${event.total_cost_usd.toFixed(4)}</Text>
+								)}
+								{event.result && (
+									<Box marginTop={0.5}>
+										<Text wrap="wrap">{event.result}</Text>
+									</Box>
+								)}
+							</Box>
+						</Box>
+					);
+				} else if (event.subtype === 'error' || event.is_error) {
+					return (
+						<Box key={index} flexDirection="column" marginY={1}>
+							<Text bold color="red">
+								❌ Task Failed
+							</Text>
+							{event.result && (
+								<Box paddingLeft={2}>
+									<Text color="red">{event.result}</Text>
+								</Box>
+							)}
+						</Box>
+					);
+				}
+				return null;
+
+			// System initialization event
+			case 'system':
+				if (event.subtype === 'init') {
+					return (
+						<Box key={index} flexDirection="column" marginY={1}>
+							<Text bold color="blue">
+								🚀 System Initialized
+							</Text>
+							<Box paddingLeft={2} flexDirection="column">
+								{event.model && <Text dimColor>Model: {event.model}</Text>}
+								{event.cwd && <Text dimColor>Directory: {event.cwd}</Text>}
+								{event.tools && event.tools.length > 0 && (
+									<Text dimColor>Tools: {event.tools.length} available</Text>
+								)}
+								{event.output_style && (
+									<Text dimColor>Output style: {event.output_style}</Text>
+								)}
+							</Box>
+						</Box>
+					);
+				}
+				return null;
+
+			// User message event
+			case 'user':
+				return (
+					<Box key={index} flexDirection="column" marginY={0.5}>
+						<Text bold color="green">
+							👤 User
+						</Text>
+						{event.message && (
+							<Box paddingLeft={2}>
+								<Text>{JSON.stringify(event.message.content, null, 2)}</Text>
+							</Box>
+						)}
+					</Box>
+				);
+
+			// Assistant message event
+			case 'assistant':
+				return (
+					<Box key={index} flexDirection="column" marginY={0.5}>
+						<Text bold color="blue">
+							🤖 Assistant
+						</Text>
+						{event.message && (
+							<Box paddingLeft={2} flexDirection="column">
+								{event.message.content?.map((content: any, i: number) => {
+									if (content.type === 'text') {
+										return (
+											<Text key={i} wrap="wrap">
+												{content.text}
+											</Text>
+										);
+									} else if (content.type === 'tool_use') {
+										return (
+											<Box key={i} flexDirection="column">
+												<Text color="yellow">🔧 Using tool: {content.name}</Text>
+												<Box paddingLeft={2}>
+													<Text dimColor>
+														{JSON.stringify(content.input, null, 2)}
+													</Text>
+												</Box>
+											</Box>
+										);
+									}
+									return null;
+								})}
+								{event.message.usage && (
+									<Box marginTop={0.5}>
+										<Text dimColor>
+											Tokens - In: {event.message.usage.input_tokens}, Out:{' '}
+											{event.message.usage.output_tokens}
+										</Text>
+									</Box>
+								)}
+							</Box>
+						)}
 					</Box>
 				);
 
@@ -349,7 +553,10 @@ export default function RalphLoop({
 				// For unknown event types, show raw JSON in dimmed text
 				return (
 					<Box key={index} marginY={0.5}>
-						<Text dimColor>{JSON.stringify(event, null, 2)}</Text>
+						<Text dimColor>
+							{event.type && `[${event.type}] `}
+							{JSON.stringify(event, null, 2)}
+						</Text>
 					</Box>
 				);
 		}
