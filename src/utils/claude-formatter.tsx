@@ -148,6 +148,12 @@ export const formatClaudeEvent = (
 									🔨 Server Tool: {event.content_block.name}
 								</Text>
 							)}
+							{event.content_block.type === ContentBlockType.REDACTED_THINKING && (
+								<Text color="red">
+									{' '}
+									🔒 Redacted Thinking (Safety)
+								</Text>
+							)}
 						</>
 					)}
 				</Box>
@@ -436,6 +442,17 @@ export const formatClaudeEvent = (
 											<Box paddingLeft={2}>
 												<Text dimColor wrap="wrap">
 													{smartRenderText(content.text)}
+												</Text>
+											</Box>
+										</Box>
+									);
+								} else if (content.type === ContentBlockType.REDACTED_THINKING) {
+									return (
+										<Box key={i} flexDirection="column">
+											<Text color="red">🔒 Redacted Thinking</Text>
+											<Box paddingLeft={2}>
+												<Text dimColor italic>
+													[Content removed by safety system]
 												</Text>
 											</Box>
 										</Box>

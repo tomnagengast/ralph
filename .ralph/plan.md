@@ -114,6 +114,34 @@
      - Build passes with no TypeScript errors
      - Test file includes all event types for validation
 
+## Completed Tasks (2025-08-30 - Phase 5)
+
+### Enhanced Claude Message Formatting - Additional Improvements
+
+- **Status**: COMPLETED
+- **Date**: 2025-08-30
+- **Description**: Further enhanced Claude message formatting with extended event type support and improved visual design
+- **Changes Made**:
+  1. **Extended Event Type Support**:
+     - Added support for specific error types (authentication, rate_limit, request_too_large, etc.)
+     - Added REDACTED_THINKING content block type for safety-filtered content
+     - Enhanced error display with specific icons and messages for each error type
+  2. **Improved Visual Design**:
+     - Enhanced JSON formatting with color-coded syntax highlighting
+     - Better visual borders and separators for major events
+     - Improved message start display with better model/ID formatting
+     - Enhanced result event display with bordered success messages
+     - Added wrap="wrap" to text deltas for better long text display
+  3. **Better Markdown Support**:
+     - Ensured all text content uses smartRenderText for markdown detection
+     - Improved code block formatting with language labels
+     - Enhanced header and list rendering
+  4. **Comprehensive Test Coverage**:
+     - Created test script with all new event types
+     - Verified enhanced error handling
+     - Tested markdown rendering and JSON formatting
+     - Build passes with no TypeScript errors
+
 ## Next Priority Tasks
 
 1. **Performance and UX Enhancements**

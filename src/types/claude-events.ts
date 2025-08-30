@@ -24,7 +24,8 @@ export interface ContentBlock {
 		| 'image'
 		| 'document'
 		| 'web_search'
-		| 'server_tool_use';
+		| 'server_tool_use'
+		| 'redacted_thinking';
 	id?: string;
 	name?: string;
 	text?: string;
@@ -173,6 +174,15 @@ export enum ClaudeEventType {
 	SYSTEM = 'system',
 	USER = 'user',
 	ASSISTANT = 'assistant',
+	
+	// Specific error types
+	INVALID_REQUEST_ERROR = 'invalid_request_error',
+	AUTHENTICATION_ERROR = 'authentication_error',
+	PERMISSION_ERROR = 'permission_error',
+	NOT_FOUND_ERROR = 'not_found_error',
+	REQUEST_TOO_LARGE = 'request_too_large',
+	RATE_LIMIT_ERROR = 'rate_limit_error',
+	API_ERROR = 'api_error',
 
 	// Tool events
 	TOOL_USE = 'tool_use',
@@ -203,6 +213,7 @@ export enum ContentBlockType {
 	DOCUMENT = 'document',
 	WEB_SEARCH = 'web_search',
 	SERVER_TOOL_USE = 'server_tool_use',
+	REDACTED_THINKING = 'redacted_thinking',
 }
 
 // Delta types for better type safety
