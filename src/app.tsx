@@ -1,8 +1,9 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useInput, useApp} from 'ink';
-import {Text} from 'ink';
+import {Text, Box} from 'ink';
 import fs from 'fs';
 import {RunEngine} from './run.js';
+import {OutputProcessor} from './output.js';
 import {loadRunConfig} from './utils/config.js';
 import type {RunConfig} from './types/run.js';
 
@@ -14,6 +15,8 @@ type Props = {
 export default function App(props: Props) {
 	const {prompt, model} = props;
 	const {exit} = useApp();
+	const [output, setOutput] = useState<string>('');
+	const [outputProcessor] = useState(new OutputProcessor());
 
 	// Handle keyboard input - only Ctrl+C for exit
 	useInput((input, key) => {
@@ -21,7 +24,6 @@ export default function App(props: Props) {
 			exit();
 		}
 	});
-
 
 	// Initialize run engine on mount
 	useEffect(() => {
@@ -33,14 +35,24 @@ export default function App(props: Props) {
 
 		const engine = new RunEngine(config);
 		
-		// Simply pass through stdout output
+		// Process stream JSON output
 		engine.on('output', (data: string) => {
-			process.stdout.write(data);
+			const outputs = outputProcessor.processStreamJson(data);
+			for (const out of outputs) {
+				if (out.type === 'text' || out.type === 'content') {
+					const text = out.content || out.text || '';
+					setOutput(prev => prev + text);
+				} else if (out.type === 'tool_use') {
+					setOutput(prev => prev + `\n🔧 Using tool: ${out.tool_name}\n`);
+				} else if (out.type === 'error') {
+					setOutput(prev => prev + `\n❌ Error: ${out.error}\n`);
+				}
+			}
 		});
 		
-		// Pass through stderr output
+		// Handle errors
 		engine.on('error', (error: string) => {
-			process.stderr.write(error);
+			setOutput(prev => prev + `\n⚠️  ${error}`);
 		});
 		
 		// Start the run engine
@@ -52,8 +64,16 @@ export default function App(props: Props) {
 		return () => {
 			engine.stop();
 		};
-	}, [prompt, model, exit]);
+	}, [prompt, model, exit, outputProcessor]);
 
-	// Simple status message
-	return <Text>Running ralph loop... (Press Ctrl+C to stop)</Text>;
+	// Render formatted output with Ink
+	return (
+		<Box flexDirection="column">
+			<Text color="cyan" bold>Ralph Loop Running</Text>
+			<Text dimColor>(Press Ctrl+C to stop)</Text>
+			<Box marginTop={1}>
+				<Text>{output}</Text>
+			</Box>
+		</Box>
+	);
 }
