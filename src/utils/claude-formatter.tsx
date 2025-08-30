@@ -499,6 +499,288 @@ export const formatClaudeEvent = (
 				</Box>
 			);
 
+		// Fine-grained tool streaming events (2025 beta)
+		case ClaudeEventType.TOOL_USE_START:
+			return (
+				<Box key={index} flexDirection="column" marginY={0.5}>
+					<Text color="yellow">
+						🔧 Tool Stream Start: {event.tool_name}
+						{event.tool_use_id && (
+							<Text dimColor> [{truncateText(event.tool_use_id, 8)}]</Text>
+						)}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.TOOL_USE_DELTA:
+			return (
+				<Text key={index} color="yellow" dimColor>
+					{event.delta?.partial_json || ''}
+				</Text>
+			);
+			
+		case ClaudeEventType.TOOL_USE_STOP:
+			return (
+				<Box key={index} marginBottom={0.5}>
+					<Text dimColor>🔧 Tool Stream End</Text>
+				</Box>
+			);
+		
+		// Extended thinking events (Claude 4)
+		case ClaudeEventType.THINKING_BLOCK_START:
+			return (
+				<Box key={index} flexDirection="column" marginY={0.5}>
+					<Text bold color="blue">
+						🧠 Extended Thinking Started
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.THINKING_BLOCK_DELTA:
+			return (
+				<Text key={index} color="blue" dimColor wrap="wrap">
+					{smartRenderText(event.delta?.text || '')}
+				</Text>
+			);
+			
+		case ClaudeEventType.THINKING_BLOCK_SIGNATURE:
+			return (
+				<Box key={index} marginTop={0.5}>
+					<Text dimColor>
+						✓ Thinking verified: {truncateText(event.delta?.signature || '', 16)}...
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.THINKING_BLOCK_STOP:
+			return (
+				<Box key={index} marginBottom={0.5}>
+					<Text dimColor>🧠 Thinking Complete</Text>
+				</Box>
+			);
+		
+		// Search result events
+		case ClaudeEventType.SEARCH_RESULT_START:
+			return (
+				<Box key={index} flexDirection="column" marginY={0.5}>
+					<Text bold color="cyan">
+						🔍 Search Results
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.SEARCH_RESULT_DELTA:
+			return (
+				<Box key={index} paddingLeft={2}>
+					<Text color="cyan" wrap="wrap">
+						{smartRenderText(event.delta?.text || event.content || '')}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.SEARCH_RESULT_STOP:
+			return (
+				<Box key={index} marginBottom={0.5}>
+					<Text dimColor>🔍 Search Complete</Text>
+				</Box>
+			);
+		
+		// Code execution events (Claude 4)
+		case ClaudeEventType.CODE_START:
+			return (
+				<Box key={index} flexDirection="column" marginY={0.5}>
+					<Box borderStyle="single" borderColor="magenta" paddingX={1}>
+						<Text bold color="magenta">
+							💻 Code Execution
+						</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.CODE_OUTPUT:
+			return (
+				<Box key={index} paddingLeft={2}>
+					<Text color="gray">
+						{event.content || event.text || ''}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.CODE_ERROR:
+			return (
+				<Box key={index} paddingLeft={2}>
+					<Text color="red">
+						❌ Code Error: {typeof event.error === 'string' ? event.error : (event.error?.message || event.content || '')}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.CODE_STOP:
+			return (
+				<Box key={index} marginBottom={0.5}>
+					<Text dimColor>💻 Execution Complete</Text>
+				</Box>
+			);
+		
+		// File processing events
+		case ClaudeEventType.FILE_START:
+			return (
+				<Box key={index} flexDirection="column" marginY={0.5}>
+					<Text bold color="green">
+						📁 Processing File: {event['file_name'] || 'Unknown'}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.FILE_CHUNK:
+			return (
+				<Box key={index} paddingLeft={2}>
+					<Text dimColor>
+						{truncateText(event.content || '', 100)}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.FILE_ERROR:
+			return (
+				<Box key={index} paddingLeft={2}>
+					<Text color="red">
+						❌ File Error: {typeof event.error === 'string' ? event.error : (event.error?.message || event.content || '')}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.FILE_STOP:
+			return (
+				<Box key={index} marginBottom={0.5}>
+					<Text dimColor>📁 File Processing Complete</Text>
+				</Box>
+			);
+		
+		// Connection events
+		case ClaudeEventType.CONNECTION_START:
+			return (
+				<Box key={index} marginY={0.5}>
+					<Text color="green">
+						🔗 Connection Established
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.CONNECTION_PING:
+			return (
+				<Text key={index} dimColor>
+					• connection ping
+				</Text>
+			);
+			
+		case ClaudeEventType.CONNECTION_ERROR:
+			return (
+				<Box key={index} marginY={0.5}>
+					<Text color="red">
+						❌ Connection Error: {typeof event.error === 'string' ? event.error : (event.error?.message || 'Unknown error')}
+					</Text>
+				</Box>
+			);
+			
+		case ClaudeEventType.CONNECTION_CLOSE:
+			return (
+				<Box key={index} marginY={0.5}>
+					<Text color="yellow">
+						🔗 Connection Closed
+					</Text>
+				</Box>
+			);
+		
+		// Specific error types
+		case ClaudeEventType.INVALID_REQUEST_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						⚠️ Invalid Request (400)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Request format or content is invalid')}</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.AUTHENTICATION_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						🔒 Authentication Failed (401)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'API key is invalid or missing')}</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.PERMISSION_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						🚫 Permission Denied (403)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Insufficient permissions for this operation')}</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.NOT_FOUND_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						❓ Not Found (404)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Resource not found')}</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.REQUEST_TOO_LARGE:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						📦 Request Too Large (413)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Request exceeds 32MB limit')}</Text>
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.RATE_LIMIT_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						⏱️ Rate Limit Exceeded (429)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Too many requests, please slow down')}</Text>
+						{event['retry_after'] && (
+							<Text color="yellow">Retry after: {event['retry_after']}s</Text>
+						)}
+					</Box>
+				</Box>
+			);
+			
+		case ClaudeEventType.API_ERROR:
+			return (
+				<Box key={index} flexDirection="column" marginY={1}>
+					<Text bold color="red">
+						💥 API Error (500)
+					</Text>
+					<Box paddingLeft={2}>
+						<Text color="red">{typeof event.error === 'string' ? event.error : (event.error?.message || 'Internal Anthropic system error')}</Text>
+						<Text color="yellow">Please try again later</Text>
+					</Box>
+				</Box>
+			);
+
 		// Legacy/fallback event types
 		case ClaudeEventType.TEXT:
 		case ClaudeEventType.CONTENT:

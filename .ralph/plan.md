@@ -142,6 +142,33 @@
      - Tested markdown rendering and JSON formatting
      - Build passes with no TypeScript errors
 
+## Completed Tasks (2025-08-30 - Phase 6)
+
+### Comprehensive Claude Event Type Support - COMPLETED ✅
+
+- **Status**: COMPLETED
+- **Date**: 2025-08-30
+- **Description**: Added support for ALL Claude API streaming event types including 2025 beta features
+- **Changes Made**:
+  1. **Extended Event Type Definitions**:
+     - Added fine-grained tool streaming events (tool_use_start, tool_use_delta, tool_use_stop)
+     - Added extended thinking events for Claude 4 (thinking_block_start/delta/signature/stop)
+     - Added search result events (search_result_start/delta/stop)
+     - Added code execution events (code_start/output/error/stop)
+     - Added file processing events (file_start/chunk/error/stop)
+     - Added connection management events (connection_start/ping/error/close)
+     - Added specific HTTP error types (400, 401, 403, 404, 413, 429, 500)
+  2. **Comprehensive Formatter Implementation**:
+     - Implemented formatting for all 30+ new event types
+     - Added proper error handling for ErrorInfo objects vs strings
+     - Enhanced visual indicators with appropriate emojis for each event type
+     - Added support for retry_after and rate limit information
+     - Proper TypeScript typing for all event properties
+  3. **Build and Testing**:
+     - Fixed all TypeScript compilation errors
+     - Proper handling of index signature properties
+     - Successfully built with no errors
+
 ## Next Priority Tasks
 
 1. **Performance and UX Enhancements**

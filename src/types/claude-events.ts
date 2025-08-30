@@ -187,6 +187,40 @@ export enum ClaudeEventType {
 	// Tool events
 	TOOL_USE = 'tool_use',
 	TOOL_RESULT = 'tool_result',
+	
+	// Fine-grained tool streaming (2025 beta)
+	TOOL_USE_START = 'tool_use_start',
+	TOOL_USE_DELTA = 'tool_use_delta',
+	TOOL_USE_STOP = 'tool_use_stop',
+	
+	// Extended thinking events (Claude 4)
+	THINKING_BLOCK_START = 'thinking_block_start',
+	THINKING_BLOCK_DELTA = 'thinking_block_delta',
+	THINKING_BLOCK_SIGNATURE = 'thinking_block_signature',
+	THINKING_BLOCK_STOP = 'thinking_block_stop',
+	
+	// Search events
+	SEARCH_RESULT_START = 'search_result_start',
+	SEARCH_RESULT_DELTA = 'search_result_delta',
+	SEARCH_RESULT_STOP = 'search_result_stop',
+	
+	// Code execution events (Claude 4)
+	CODE_START = 'code_start',
+	CODE_OUTPUT = 'code_output',
+	CODE_ERROR = 'code_error',
+	CODE_STOP = 'code_stop',
+	
+	// File processing events
+	FILE_START = 'file_start',
+	FILE_CHUNK = 'file_chunk',
+	FILE_ERROR = 'file_error',
+	FILE_STOP = 'file_stop',
+	
+	// Connection events
+	CONNECTION_START = 'connection_start',
+	CONNECTION_PING = 'connection_ping',
+	CONNECTION_ERROR = 'connection_error',
+	CONNECTION_CLOSE = 'connection_close',
 
 	// Legacy events
 	TEXT = 'text',
