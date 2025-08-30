@@ -28,48 +28,48 @@ export type ColorValue = LiteralUnion<InkColor, string> | undefined;
 export interface ColorScheme {
 	name: string;
 	description: string;
-	
+
 	// Primary colors
 	primary: ColorValue;
 	secondary: ColorValue;
 	accent: ColorValue;
-	
+
 	// Semantic colors
 	success: ColorValue;
 	warning: ColorValue;
 	error: ColorValue;
 	info: ColorValue;
-	
+
 	// UI elements
 	text: ColorValue;
 	textDim: ColorValue;
 	border: ColorValue;
 	borderSecondary: ColorValue;
-	
+
 	// Claude-specific elements
 	messageStart: ColorValue;
 	messageComplete: ColorValue;
 	userMessage: ColorValue;
 	assistantMessage: ColorValue;
 	thinking: ColorValue;
-	
+
 	// Tool and system elements
 	toolUse: ColorValue;
 	toolResult: ColorValue;
 	systemMessage: ColorValue;
 	codeExecution: ColorValue;
-	
+
 	// JSON formatting
 	jsonProperty: ColorValue;
 	jsonString: ColorValue;
 	jsonNumber: ColorValue;
 	jsonBoolean: ColorValue;
 	jsonBracket: ColorValue;
-	
+
 	// Search and file operations
 	searchResult: ColorValue;
 	fileOperation: ColorValue;
-	
+
 	// Ralph Loop specific
 	iterationInfo: ColorValue;
 	promptSection: ColorValue;
@@ -114,7 +114,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
 		responseSection: 'blue',
 		timing: 'yellow',
 	},
-	
+
 	minimal: {
 		name: 'Minimal',
 		description: 'Reduced colors, mostly grayscale with essential highlights',
@@ -150,7 +150,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
 		responseSection: 'gray',
 		timing: 'gray',
 	},
-	
+
 	dark: {
 		name: 'Dark',
 		description: 'High contrast colors optimized for dark terminals',
@@ -186,7 +186,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
 		responseSection: 'blueBright',
 		timing: 'yellowBright',
 	},
-	
+
 	light: {
 		name: 'Light',
 		description: 'Colors optimized for light terminals',
@@ -222,7 +222,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
 		responseSection: 'blue',
 		timing: 'red',
 	},
-	
+
 	'high-contrast': {
 		name: 'High Contrast',
 		description: 'High contrast colors for accessibility',
@@ -258,7 +258,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
 		responseSection: 'cyanBright',
 		timing: 'yellowBright',
 	},
-	
+
 	none: {
 		name: 'No Colors',
 		description: 'Plain text with no colors',
@@ -315,17 +315,17 @@ export class ColorManager {
 		if (process.env['NO_COLOR']) {
 			return true;
 		}
-		
+
 		// Check if stdout is not a TTY (e.g., when piping output)
 		if (!process.stdout.isTTY) {
 			return true;
 		}
-		
+
 		// Check for CI environments
 		if (process.env['CI']) {
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -334,7 +334,7 @@ export class ColorManager {
 			this.currentScheme = colorSchemes['none']!;
 			return true;
 		}
-		
+
 		const scheme = colorSchemes[schemeName];
 		if (scheme) {
 			this.currentScheme = scheme;
@@ -360,37 +360,99 @@ export class ColorManager {
 	}
 
 	// Convenience methods for getting specific colors
-	public primary(): ColorValue { return this.currentScheme.primary; }
-	public secondary(): ColorValue { return this.currentScheme.secondary; }
-	public accent(): ColorValue { return this.currentScheme.accent; }
-	public success(): ColorValue { return this.currentScheme.success; }
-	public warning(): ColorValue { return this.currentScheme.warning; }
-	public error(): ColorValue { return this.currentScheme.error; }
-	public info(): ColorValue { return this.currentScheme.info; }
-	public text(): ColorValue { return this.currentScheme.text; }
-	public textDim(): ColorValue { return this.currentScheme.textDim; }
-	public border(): ColorValue { return this.currentScheme.border; }
-	public borderSecondary(): ColorValue { return this.currentScheme.borderSecondary; }
-	public messageStart(): ColorValue { return this.currentScheme.messageStart; }
-	public messageComplete(): ColorValue { return this.currentScheme.messageComplete; }
-	public userMessage(): ColorValue { return this.currentScheme.userMessage; }
-	public assistantMessage(): ColorValue { return this.currentScheme.assistantMessage; }
-	public thinking(): ColorValue { return this.currentScheme.thinking; }
-	public toolUse(): ColorValue { return this.currentScheme.toolUse; }
-	public toolResult(): ColorValue { return this.currentScheme.toolResult; }
-	public systemMessage(): ColorValue { return this.currentScheme.systemMessage; }
-	public codeExecution(): ColorValue { return this.currentScheme.codeExecution; }
-	public jsonProperty(): ColorValue { return this.currentScheme.jsonProperty; }
-	public jsonString(): ColorValue { return this.currentScheme.jsonString; }
-	public jsonNumber(): ColorValue { return this.currentScheme.jsonNumber; }
-	public jsonBoolean(): ColorValue { return this.currentScheme.jsonBoolean; }
-	public jsonBracket(): ColorValue { return this.currentScheme.jsonBracket; }
-	public searchResult(): ColorValue { return this.currentScheme.searchResult; }
-	public fileOperation(): ColorValue { return this.currentScheme.fileOperation; }
-	public iterationInfo(): ColorValue { return this.currentScheme.iterationInfo; }
-	public promptSection(): ColorValue { return this.currentScheme.promptSection; }
-	public responseSection(): ColorValue { return this.currentScheme.responseSection; }
-	public timing(): ColorValue { return this.currentScheme.timing; }
+	public primary(): ColorValue {
+		return this.currentScheme.primary;
+	}
+	public secondary(): ColorValue {
+		return this.currentScheme.secondary;
+	}
+	public accent(): ColorValue {
+		return this.currentScheme.accent;
+	}
+	public success(): ColorValue {
+		return this.currentScheme.success;
+	}
+	public warning(): ColorValue {
+		return this.currentScheme.warning;
+	}
+	public error(): ColorValue {
+		return this.currentScheme.error;
+	}
+	public info(): ColorValue {
+		return this.currentScheme.info;
+	}
+	public text(): ColorValue {
+		return this.currentScheme.text;
+	}
+	public textDim(): ColorValue {
+		return this.currentScheme.textDim;
+	}
+	public border(): ColorValue {
+		return this.currentScheme.border;
+	}
+	public borderSecondary(): ColorValue {
+		return this.currentScheme.borderSecondary;
+	}
+	public messageStart(): ColorValue {
+		return this.currentScheme.messageStart;
+	}
+	public messageComplete(): ColorValue {
+		return this.currentScheme.messageComplete;
+	}
+	public userMessage(): ColorValue {
+		return this.currentScheme.userMessage;
+	}
+	public assistantMessage(): ColorValue {
+		return this.currentScheme.assistantMessage;
+	}
+	public thinking(): ColorValue {
+		return this.currentScheme.thinking;
+	}
+	public toolUse(): ColorValue {
+		return this.currentScheme.toolUse;
+	}
+	public toolResult(): ColorValue {
+		return this.currentScheme.toolResult;
+	}
+	public systemMessage(): ColorValue {
+		return this.currentScheme.systemMessage;
+	}
+	public codeExecution(): ColorValue {
+		return this.currentScheme.codeExecution;
+	}
+	public jsonProperty(): ColorValue {
+		return this.currentScheme.jsonProperty;
+	}
+	public jsonString(): ColorValue {
+		return this.currentScheme.jsonString;
+	}
+	public jsonNumber(): ColorValue {
+		return this.currentScheme.jsonNumber;
+	}
+	public jsonBoolean(): ColorValue {
+		return this.currentScheme.jsonBoolean;
+	}
+	public jsonBracket(): ColorValue {
+		return this.currentScheme.jsonBracket;
+	}
+	public searchResult(): ColorValue {
+		return this.currentScheme.searchResult;
+	}
+	public fileOperation(): ColorValue {
+		return this.currentScheme.fileOperation;
+	}
+	public iterationInfo(): ColorValue {
+		return this.currentScheme.iterationInfo;
+	}
+	public promptSection(): ColorValue {
+		return this.currentScheme.promptSection;
+	}
+	public responseSection(): ColorValue {
+		return this.currentScheme.responseSection;
+	}
+	public timing(): ColorValue {
+		return this.currentScheme.timing;
+	}
 }
 
 // Global color manager instance

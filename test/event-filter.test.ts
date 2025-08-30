@@ -6,9 +6,7 @@ import {
 	validateEventFilterConfig,
 } from '../src/utils/event-filter.js';
 import type {EventFilterConfig} from '../src/utils/event-filter.js';
-import type {
-	ClaudeStreamEvent,
-} from '../src/types/claude-events.js';
+import type {ClaudeStreamEvent} from '../src/types/claude-events.js';
 import {ClaudeEventType} from '../src/types/claude-events.js';
 
 // Helper function to create test events

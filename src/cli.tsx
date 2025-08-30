@@ -47,6 +47,17 @@ if (args.includes('-h') || args.includes('--help') || !command) {
     --filter-events <preset>      Filter events using preset: text-only, no-system, errors-only, tools, messages, debug, all
     --include-events <types>      Only show specific event types (comma-separated)
     --exclude-events <types>      Hide specific event types (comma-separated)
+    
+    Performance Options:
+    --max-display-lines <num>     Maximum lines to display at once (default: 1000)
+    --max-events <num>            Maximum events to keep in memory (default: 5000)
+    --buffer-size <num>           Text buffer size for coalescing (default: 100)
+    --throttle-ms <num>           Update throttle in milliseconds (default: 16)
+    --no-progressive              Disable progressive rendering
+    --no-virtual-scrolling        Disable virtual scrolling
+    --show-memory-stats           Show memory usage statistics
+    --auto-truncate               Enable automatic text truncation for performance
+    
     -v, --version                 Output the version number
     -h, --help                    Display help for command
 
@@ -147,6 +158,16 @@ if (command === 'run') {
 	let includeEvents: string[] | undefined;
 	let excludeEvents: string[] | undefined;
 
+	// Performance configuration
+	let maxDisplayLines: number | undefined;
+	let maxEvents: number | undefined;
+	let bufferSize: number | undefined;
+	let throttleMs: number | undefined;
+	let progressiveRender: boolean | undefined;
+	let virtualScrolling: boolean | undefined;
+	let showMemoryStats = false;
+	let autoTruncate: boolean | undefined;
+
 	for (let i = 1; i < args.length; i++) {
 		if ((args[i] === '-p' || args[i] === '--prompt') && args[i + 1]) {
 			promptPath = args[i + 1]!;
@@ -172,7 +193,9 @@ if (command === 'run') {
 				colorScheme = scheme;
 			} else {
 				console.error(
-					`Error: Invalid color scheme "${scheme}". Must be one of: ${availableSchemes.join(', ')}`,
+					`Error: Invalid color scheme "${scheme}". Must be one of: ${availableSchemes.join(
+						', ',
+					)}`,
 				);
 				process.exit(1);
 			}
@@ -196,6 +219,62 @@ if (command === 'run') {
 		} else if (args[i] === '--exclude-events' && args[i + 1]) {
 			excludeEvents = args[i + 1]!.split(',').map(s => s.trim());
 			i++;
+		} else if (args[i] === '--max-display-lines' && args[i + 1]) {
+			const value = parseInt(args[i + 1]!, 10);
+			if (isNaN(value) || value < 0) {
+				console.error(
+					`Error: Invalid max-display-lines "${
+						args[i + 1]
+					}". Must be a positive number.`,
+				);
+				process.exit(1);
+			}
+			maxDisplayLines = value;
+			i++;
+		} else if (args[i] === '--max-events' && args[i + 1]) {
+			const value = parseInt(args[i + 1]!, 10);
+			if (isNaN(value) || value < 0) {
+				console.error(
+					`Error: Invalid max-events "${
+						args[i + 1]
+					}". Must be a positive number.`,
+				);
+				process.exit(1);
+			}
+			maxEvents = value;
+			i++;
+		} else if (args[i] === '--buffer-size' && args[i + 1]) {
+			const value = parseInt(args[i + 1]!, 10);
+			if (isNaN(value) || value < 0) {
+				console.error(
+					`Error: Invalid buffer-size "${
+						args[i + 1]
+					}". Must be a positive number.`,
+				);
+				process.exit(1);
+			}
+			bufferSize = value;
+			i++;
+		} else if (args[i] === '--throttle-ms' && args[i + 1]) {
+			const value = parseInt(args[i + 1]!, 10);
+			if (isNaN(value) || value < 0) {
+				console.error(
+					`Error: Invalid throttle-ms "${
+						args[i + 1]
+					}". Must be a positive number.`,
+				);
+				process.exit(1);
+			}
+			throttleMs = value;
+			i++;
+		} else if (args[i] === '--no-progressive') {
+			progressiveRender = false;
+		} else if (args[i] === '--no-virtual-scrolling') {
+			virtualScrolling = false;
+		} else if (args[i] === '--show-memory-stats') {
+			showMemoryStats = true;
+		} else if (args[i] === '--auto-truncate') {
+			autoTruncate = true;
 		}
 	}
 
@@ -241,7 +320,7 @@ if (command === 'run') {
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
 	const settingsVerbosity = settings.display?.verbosity || 'normal';
 	const finalVerbosity = verbosity ?? settingsVerbosity;
-	
+
 	// Set up color scheme
 	const settingsColorScheme = settings.display?.color_scheme || 'default';
 	const finalColorScheme = colorScheme ?? settingsColorScheme;
@@ -263,6 +342,21 @@ if (command === 'run') {
 		process.exit(1);
 	}
 
+	// Build performance configuration
+	const performanceConfig = {
+		...(maxDisplayLines !== undefined && {max_display_lines: maxDisplayLines}),
+		...(maxEvents !== undefined && {max_events_in_memory: maxEvents}),
+		...(bufferSize !== undefined && {text_buffer_size: bufferSize}),
+		...(throttleMs !== undefined && {update_throttle_ms: throttleMs}),
+		...(progressiveRender !== undefined && {
+			progressive_render: progressiveRender,
+		}),
+		...(virtualScrolling !== undefined && {
+			enable_virtual_scrolling: virtualScrolling,
+		}),
+		...(autoTruncate !== undefined && {auto_truncate: autoTruncate}),
+	};
+
 	// Render the Ink app
 	render(
 		<RalphLoop
@@ -272,6 +366,8 @@ if (command === 'run') {
 			autoStopAfterErrors={autoStopAfterErrors}
 			verbosity={finalVerbosity}
 			eventFilter={eventFilterConfig}
+			performanceConfig={performanceConfig}
+			showMemoryStats={showMemoryStats}
 		/>,
 	);
 } else {

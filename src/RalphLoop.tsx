@@ -1,15 +1,20 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {Box, Text, useApp, useInput} from 'ink';
 import {spawn} from 'child_process';
 import fs from 'fs';
 import {ClaudeStreamEvent} from './types/claude-events.js';
-import {
-	formatClaudeEvent,
-	groupTextDeltas,
-	formatGroupedTextDeltas,
-} from './utils/claude-formatter.js';
-import {EventFilterConfig, filterEvents} from './utils/event-filter.js';
+import {EventFilterConfig} from './utils/event-filter.js';
 import {getColorManager} from './utils/color-schemes.js';
+import {createStreamBuffer} from './utils/stream-buffer.js';
+import {
+	PerformanceConfig,
+	loadPerformanceConfig,
+} from './utils/performance-config.js';
+import {VirtualRenderer} from './utils/virtual-renderer.js';
+import {
+	clearFormattingCaches,
+	getCacheStats,
+} from './utils/memoized-formatter.js';
 
 // Using the comprehensive ClaudeStreamEvent interface from types/claude-events.ts
 
@@ -20,6 +25,8 @@ interface Props {
 	autoStopAfterErrors: number;
 	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug';
 	eventFilter?: EventFilterConfig;
+	performanceConfig?: Partial<PerformanceConfig>;
+	showMemoryStats?: boolean;
 }
 
 export default function RalphLoop({
@@ -29,6 +36,8 @@ export default function RalphLoop({
 	autoStopAfterErrors,
 	verbosity,
 	eventFilter,
+	performanceConfig = {},
+	showMemoryStats = false,
 }: Props) {
 	const {exit} = useApp();
 	const [iterationCount, setIterationCount] = useState(0);
@@ -36,16 +45,58 @@ export default function RalphLoop({
 		'prompt' | 'response' | 'waiting'
 	>('prompt');
 	const [promptContent, setPromptContent] = useState('');
-	const [responseEvents, setResponseEvents] = useState<ClaudeStreamEvent[]>([]);
 	const [rawResponse, setRawResponse] = useState('');
 	const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 	const [lastError, setLastError] = useState('');
 	const [isJsonMode, setIsJsonMode] = useState(false);
+	const [forceUpdate, setForceUpdate] = useState(0);
 
-	// Handle Ctrl+C
+	// Load performance configuration
+	const config = useMemo(
+		() => loadPerformanceConfig(performanceConfig),
+		[performanceConfig],
+	);
+
+	// Create stream buffer with update callback
+	const streamBuffer = useMemo(() => {
+		return createStreamBuffer(config, () => {
+			setForceUpdate(prev => prev + 1);
+		});
+	}, [config]);
+
+	// Get events from stream buffer for rendering
+	const events = useMemo(
+		() => streamBuffer.getAllEvents(),
+		[streamBuffer, forceUpdate],
+	);
+
+	// Remove unused virtual renderer hooks
+
+	// Memory stats
+	const memoryStats = useMemo(() => {
+		return {
+			buffer: streamBuffer.getMemoryStats(),
+			cache: getCacheStats(),
+		};
+	}, [streamBuffer, forceUpdate]);
+
+	// Handle Ctrl+C and other controls
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
+			streamBuffer.dispose();
+			clearFormattingCaches();
 			exit();
+		}
+		// Additional performance controls
+		if (key.ctrl && input === 'r') {
+			// Ctrl+R: Clear caches and force refresh
+			clearFormattingCaches();
+			streamBuffer.clear();
+			setForceUpdate(prev => prev + 1);
+		}
+		if (key.ctrl && input === 's') {
+			// Ctrl+S: Show memory stats
+			console.log('Memory Stats:', memoryStats);
 		}
 	});
 
@@ -56,7 +107,7 @@ export default function RalphLoop({
 			setPromptContent(prompt);
 			setCurrentPhase('prompt');
 			setIterationCount(prev => prev + 1);
-			setResponseEvents([]);
+			streamBuffer.clear();
 			setRawResponse('');
 
 			// Check if we're in JSON mode
@@ -77,9 +128,8 @@ export default function RalphLoop({
 			claude.stdin.write(prompt);
 			claude.stdin.end();
 
-			// Collect response
+			// Collect response using optimized stream buffer
 			let buffer = '';
-			let events: ClaudeStreamEvent[] = [];
 
 			claude.stdout.on('data', data => {
 				const chunk = data.toString();
@@ -93,9 +143,8 @@ export default function RalphLoop({
 						if (line.trim()) {
 							try {
 								const event = JSON.parse(line) as ClaudeStreamEvent;
-								events.push(event);
-								// Update display with all events (filtering happens in formatResponse)
-								setResponseEvents([...events]);
+								// Use stream buffer for optimized event handling
+								streamBuffer.addEvent(event);
 							} catch {
 								// Not JSON, treat as raw
 								setRawResponse(prev => prev + line + '\n');
@@ -147,34 +196,29 @@ export default function RalphLoop({
 
 	// Using the comprehensive formatClaudeEvent function from utils/claude-formatter.tsx
 
-	// Format response for display
-	const formatResponse = () => {
-		if (isJsonMode && responseEvents.length > 0) {
-			// Filter events based on configuration
-			const filteredEvents = filterEvents(responseEvents, eventFilter);
-			// Group consecutive text deltas for better readability
-			const groupedEvents = groupTextDeltas(filteredEvents);
-
+	// Optimized response formatter using virtual renderer
+	const formatResponse = useCallback(() => {
+		if (isJsonMode && events.length > 0) {
 			return (
-				<Box flexDirection="column">
-					{groupedEvents.map((item, i) => {
-						if (Array.isArray(item)) {
-							// Render grouped text deltas as a single block
-							const combinedText = formatGroupedTextDeltas(item);
-							return (
-								<Text key={i} color={getColorManager().promptSection()} wrap="wrap">
-									{combinedText}
-								</Text>
-							);
-						} else {
-							return formatClaudeEvent(item, i, verbosity);
-						}
-					})}
-				</Box>
+				<VirtualRenderer
+					events={events}
+					config={config}
+					verbosity={verbosity}
+					eventFilter={eventFilter}
+					showMemoryStats={showMemoryStats}
+				/>
 			);
 		}
 		return <Text>{rawResponse || 'Waiting for response...'}</Text>;
-	};
+	}, [
+		isJsonMode,
+		events,
+		config,
+		verbosity,
+		eventFilter,
+		showMemoryStats,
+		rawResponse,
+	]);
 
 	return (
 		<Box flexDirection="column">
@@ -182,15 +226,31 @@ export default function RalphLoop({
 				<Text bold color={getColorManager().primary()}>
 					Ralph Loop Running
 				</Text>
-				<Text dimColor> (Press Ctrl+C to stop)</Text>
+				<Text dimColor> (Ctrl+C: stop, Ctrl+R: refresh, Ctrl+S: stats)</Text>
 			</Box>
+
+			{/* Performance stats display */}
+			{showMemoryStats && (
+				<Box marginBottom={1}>
+					<Text dimColor>
+						📊 Buffer: {memoryStats.buffer.eventCount} events (
+						{memoryStats.buffer.estimatedMemoryKB}KB) | Cache:{' '}
+						{memoryStats.cache.totalMemoryKB}KB | Config:{' '}
+						{config.progressive_render ? 'Progressive' : 'Standard'} | Virtual:{' '}
+						{config.enable_virtual_scrolling ? 'On' : 'Off'}
+					</Text>
+				</Box>
+			)}
 
 			<Box marginBottom={1}>
 				<Text bold color={getColorManager().iterationInfo()}>
 					🔄 Iteration #{iterationCount} - {timestamp}
 				</Text>
 				{consecutiveErrors > 0 && (
-					<Text color={getColorManager().timing()}> ⚠️ {consecutiveErrors} consecutive errors</Text>
+					<Text color={getColorManager().timing()}>
+						{' '}
+						⚠️ {consecutiveErrors} consecutive errors
+					</Text>
 				)}
 			</Box>
 
@@ -198,7 +258,11 @@ export default function RalphLoop({
 				<Text bold color={getColorManager().promptSection()}>
 					📝 PROMPT:
 				</Text>
-				<Box borderStyle="single" borderColor={getColorManager().promptSection()} paddingX={1}>
+				<Box
+					borderStyle="single"
+					borderColor={getColorManager().promptSection()}
+					paddingX={1}
+				>
 					<Text>{promptContent || 'Loading...'}</Text>
 				</Box>
 			</Box>
@@ -241,7 +305,9 @@ export default function RalphLoop({
 
 			{lastError && (
 				<Box marginTop={1}>
-					<Text color={getColorManager().error()}>❌ Last Error: {lastError}</Text>
+					<Text color={getColorManager().error()}>
+						❌ Last Error: {lastError}
+					</Text>
 				</Box>
 			)}
 		</Box>
