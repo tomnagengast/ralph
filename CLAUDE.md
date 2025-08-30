@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Primary directive
+
+1. Maintain simplicity at all cost
+
 ## Project Overview
 
 Ralph is a CLI tool for running ralph loops, built with React/Ink for interactive terminal UI and TypeScript. The project uses meow for CLI argument parsing and has a simple architecture with two main components.

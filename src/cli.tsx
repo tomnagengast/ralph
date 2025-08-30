@@ -97,7 +97,10 @@ if (command === 'init') {
 Replace this with your continuous prompt.
 `;
 
-	createFileIfNotExists('.ralph/settings.json', JSON.stringify(defaultSettings, null, 2));
+	createFileIfNotExists(
+		'.ralph/settings.json',
+		JSON.stringify(defaultSettings, null, 2),
+	);
 	createFileIfNotExists('.ralph/plan.md');
 	createFileIfNotExists('.ralph/prompt.md', defaultPrompt);
 
@@ -113,7 +116,7 @@ if (command === 'run') {
 	// Parse flags
 	let promptPath = '.ralph/prompt.md';
 	let model: string | undefined;
-	
+
 	for (let i = 1; i < args.length; i++) {
 		if ((args[i] === '-p' || args[i] === '--prompt') && args[i + 1]) {
 			promptPath = args[i + 1]!;
@@ -123,16 +126,18 @@ if (command === 'run') {
 			i++;
 		}
 	}
-	
+
 	// Check if prompt file exists
 	if (!fs.existsSync(promptPath)) {
 		console.error(`Error: Prompt file not found: ${promptPath}`);
 		if (promptPath === '.ralph/prompt.md') {
-			console.error('\nTip: Run "ralph init" first to create the default structure.');
+			console.error(
+				'\nTip: Run "ralph init" first to create the default structure.',
+			);
 		}
 		process.exit(1);
 	}
-	
+
 	// Load settings
 	let settings: any = {};
 	const settingsPath = '.ralph/settings.json';
@@ -144,25 +149,25 @@ if (command === 'run') {
 			console.error('Failed to parse settings.json:', error);
 		}
 	}
-	
+
 	// Build claude args
 	const claudeArgs = ['-p'];
 	if (model) {
 		claudeArgs.push('--model', model);
 	}
-	
+
 	// Add flags from settings
 	const flags = settings.claude?.flags ?? [
 		'--dangerously-skip-permissions',
-		'--verbose', 
+		'--verbose',
 		'--output-format',
 		'stream-json',
 	];
 	claudeArgs.push(...flags);
-	
+
 	const intervalMs = settings.run?.interval_ms ?? 1000;
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
-	
+
 	// Render the Ink app
 	render(
 		<RalphLoop
@@ -170,7 +175,7 @@ if (command === 'run') {
 			claudeArgs={claudeArgs}
 			intervalMs={intervalMs}
 			autoStopAfterErrors={autoStopAfterErrors}
-		/>
+		/>,
 	);
 } else {
 	console.error(`Error: Unknown command "${command}"\n`);
