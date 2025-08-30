@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import {spawn} from 'child_process';
+import React from 'react';
+import {render} from 'ink';
 import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
+import RalphLoop from './RalphLoop.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -160,74 +162,16 @@ if (command === 'run') {
 	
 	const intervalMs = settings.run?.interval_ms ?? 1000;
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
-	let consecutiveErrors = 0;
-	let iterationCount = 0;
 	
-	console.log('Ralph Loop Running (Press Ctrl+C to stop)\n');
-	
-	// Run loop
-	const runIteration = async () => {
-		iterationCount++;
-		const promptContent = fs.readFileSync(promptPath, 'utf-8');
-		const timestamp = new Date().toLocaleTimeString();
-		
-		// Show what we're sending to claude
-		console.log('\n════════════════════════════════════════════════════════════════');
-		console.log(`🔄 ITERATION #${iterationCount} - ${timestamp}`);
-		console.log('════════════════════════════════════════════════════════════════');
-		console.log('\n📋 COMMAND: claude ' + claudeArgs.join(' '));
-		console.log('\n📝 PROMPT:');
-		console.log('────────────────────────────────────────────────────────────────');
-		console.log(promptContent);
-		console.log('────────────────────────────────────────────────────────────────');
-		console.log('\n🤖 CLAUDE RESPONSE:');
-		console.log('────────────────────────────────────────────────────────────────');
-		
-		const claude = spawn('claude', claudeArgs, {
-			stdio: ['pipe', 'inherit', 'inherit'],  // Direct output to terminal
-		});
-		
-		// Send prompt to stdin
-		claude.stdin.write(promptContent);
-		claude.stdin.end();
-		
-		// Wait for completion
-		await new Promise<void>((resolve) => {
-			claude.on('close', (code) => {
-				console.log('────────────────────────────────────────────────────────────────');
-				
-				if (code !== 0) {
-					consecutiveErrors++;
-					console.error(`\n⚠️  Claude exited with code ${code}`);
-					
-					if (consecutiveErrors >= autoStopAfterErrors) {
-						console.error(`\nStopping after ${consecutiveErrors} consecutive errors`);
-						process.exit(1);
-					}
-				} else {
-					consecutiveErrors = 0;
-					console.log(`\n✅ Iteration #${iterationCount} completed successfully`);
-				}
-				
-				console.log(`\n⏱️  Waiting ${intervalMs}ms before next iteration...`);
-				
-				// Wait before next iteration
-				setTimeout(() => {
-					resolve();
-					runIteration();
-				}, intervalMs);
-			});
-		});
-	};
-	
-	// Handle Ctrl+C
-	process.on('SIGINT', () => {
-		console.log('\n\nStopping ralph loop...');
-		process.exit(0);
-	});
-	
-	// Start the loop
-	runIteration();
+	// Render the Ink app
+	render(
+		<RalphLoop
+			promptPath={promptPath}
+			claudeArgs={claudeArgs}
+			intervalMs={intervalMs}
+			autoStopAfterErrors={autoStopAfterErrors}
+		/>
+	);
 } else {
 	console.error(`Error: Unknown command "${command}"\n`);
 	process.exit(1);
