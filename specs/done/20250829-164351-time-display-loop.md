@@ -97,12 +97,14 @@ IMPORTANT: Execute every step in order, top to bottom.
 ## Testing Strategy
 
 ### Manual Testing
+
 - Run `ralph -p "hello"` and verify time display updates every second
 - Test that Ctrl+C properly terminates the application
 - Verify existing functionality remains intact for other command variations
 - Test with different prompt types (file paths vs direct text)
 
 ### Edge Cases
+
 - Empty prompts
 - Invalid file paths as prompts
 - Rapid start/stop cycles

@@ -8,6 +8,9 @@ task_description: $ARGUMENTS
 
 ## Instructions
 
+> [!TIP]
+> If you get stuck, use the codex MCP tools to review your work and provide any guidance on resolving your issue.
+
 0. **Activate Plan**: First, if the $task_description is a `specs/backlog` doc, move it to `specs/active/`
 1. **Prime with Context**: First, read and execute `.claude/commands/prime.md` to understand the codebase
 2. **Analyze Task**: Carefully read and understand the task description
@@ -45,7 +48,7 @@ task_description
 ## Validation
 
 1. Use the spec-implementation-validator subagent to review the work done by passing it relevant context for validation (spec path or description, relevant git commits, etc.)
-2. If the agent response with blocking changes or low-lift follow ups, address them. Otherwise, continue to `Report`.
+2. If the agent response with blocking changes or low-lift follow ups, start again from the top to address them. Otherwise, continue to `Report`.
 
 ## Report
 

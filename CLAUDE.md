@@ -22,15 +22,18 @@ npm test
 ## Architecture
 
 The project consists of two main TypeScript files:
+
 - `src/cli.tsx` - CLI entry point that handles command parsing and initialization
 - `src/app.tsx` - React/Ink component that renders the terminal UI
 
 ### Key Features
+
 - `ralph init` - Creates default directory structure and configuration files
 - `ralph -p <prompt>` - Runs ralph with a prompt (file path or direct text)
 - Configurable paths for plan, specs, src, and config files
 
 ### Directory Structure Created by Init
+
 ```
 .ralph/
   settings.toml
@@ -45,6 +48,7 @@ specs/
 ## Testing & Linting
 
 The project uses:
+
 - **xo** for ESLint-based linting with React support
 - **prettier** for code formatting
 - **ava** for testing (configured for TypeScript with ts-node loader)

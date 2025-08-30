@@ -19,11 +19,10 @@ You will:
    - Step-by-step implementation roadmap
    - Risk assessment and mitigation strategies
 3. **Document**: Save the plan in the `specs/backlog` directory with filename: `{yyyyMMdd}-{HHmmss}-{descriptive-name}.md`
-
-- Replace `{yyyyMMdd}-{HHmmss}` with the current date and time
-- Replace `{descriptive-name}` with a short, descriptive name based on the task (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
-
-4. **Validate Feasibility**: Cross-reference your plans against the actual codebase to ensure:
+   - Replace `{yyyyMMdd}-{HHmmss}` with the current date and time
+   - Replace `{descriptive-name}` with a short, descriptive name based on the task (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
+4. **Simplify**: Use codex MCP tools to review the plan and validate that it's only as complex as absolutely required, simplifing where possible without dropping core functionality
+5. **Validate Feasibility**: Cross-reference your plans against the actual codebase to ensure:
    - Compatibility with existing architecture
    - Minimal disruption to current functionality
    - Adherence to established coding patterns and standards
