@@ -28,7 +28,7 @@ npm test
 The project consists of two main TypeScript files:
 
 - `src/cli.tsx` - CLI entry point that handles command parsing and initialization
-- `src/app.tsx` - React/Ink component that renders the terminal UI
+- `src/RalphLoop.tsx` - React/Ink component that renders the terminal UI and manages the Ralph loop
 
 ### Key Features
 
