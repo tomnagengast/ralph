@@ -20,14 +20,50 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 			return <Text color="cyan">{jsonStr}</Text>;
 		}
 		
-		// For complex objects, format with indentation
+		// For complex objects, format with syntax highlighting
 		return (
 			<Box flexDirection="column">
-				{jsonStr.split('\n').map((line, i) => (
-					<Text key={i} dimColor>
-						{line}
-					</Text>
-				))}
+				{jsonStr.split('\n').map((line, i) => {
+					// Apply color coding based on content
+					let color: string | undefined;
+					let dimColor = false;
+					
+					if (line.includes('"') && line.includes(':')) {
+						// Property names
+						const parts = line.split(':');
+						const propName = parts[0];
+						const value = parts.slice(1).join(':');
+						
+						return (
+							<Text key={i}>
+								<Text color="magenta">{propName}</Text>
+								<Text dimColor>:</Text>
+								<Text color={value.includes('"') ? "green" : "cyan"}>
+									{value}
+								</Text>
+							</Text>
+						);
+					} else if (line.includes('{') || line.includes('}') || line.includes('[') || line.includes(']')) {
+						// Brackets
+						color = 'yellow';
+						dimColor = true;
+					} else if (line.includes('true') || line.includes('false') || line.includes('null')) {
+						// Boolean/null values
+						color = 'cyan';
+					} else if (/\d+/.test(line)) {
+						// Numbers
+						color = 'cyan';
+					} else {
+						// Default
+						dimColor = true;
+					}
+					
+					return (
+						<Text key={i} color={color} dimColor={dimColor}>
+							{line}
+						</Text>
+					);
+				})}
 			</Box>
 		);
 	} catch {
@@ -98,16 +134,22 @@ export const formatClaudeEvent = (
 				<Box key={index} flexDirection="column" marginBottom={1}>
 					<Box borderStyle="round" borderColor="magenta" paddingX={1}>
 						<Text bold color="magenta">
-							📬 MESSAGE STARTED
+							╭─ 📬 MESSAGE STARTED ─╮
 						</Text>
 					</Box>
 					{event.message && (
 						<Box paddingLeft={2} flexDirection="column">
 							{event.message.model && (
-								<Text dimColor>Model: {event.message.model}</Text>
+								<Text>
+									<Text color="blue">Model:</Text>
+									<Text color="cyan"> {event.message.model}</Text>
+								</Text>
 							)}
 							{event.message.id && (
-								<Text dimColor>Message ID: {event.message.id}</Text>
+								<Text>
+									<Text color="blue">ID:</Text>
+									<Text dimColor> {event.message.id}</Text>
+								</Text>
 							)}
 							{formatTokenUsage(event.message.usage)}
 						</Box>
@@ -162,7 +204,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CONTENT_BLOCK_DELTA:
 			if (event.delta?.type === DeltaType.TEXT_DELTA && event.delta.text) {
 				return (
-					<Text key={index} color="green">
+					<Text key={index} wrap="wrap">
 						{smartRenderText(event.delta.text)}
 					</Text>
 				);
@@ -170,19 +212,32 @@ export const formatClaudeEvent = (
 				event.delta?.type === DeltaType.INPUT_JSON_DELTA &&
 				event.delta.partial_json
 			) {
-				return (
-					<Text key={index} color="yellow">
-						{event.delta.partial_json}
-					</Text>
-				);
+				// Try to parse and format JSON nicely
+				try {
+					const parsed = JSON.parse(event.delta.partial_json);
+					return (
+						<Box key={index} paddingLeft={1}>
+							{formatJson(parsed, true)}
+						</Box>
+					);
+				} catch {
+					// If not valid JSON yet, show as-is
+					return (
+						<Text key={index} color="yellow" dimColor>
+							{event.delta.partial_json}
+						</Text>
+					);
+				}
 			} else if (
 				event.delta?.type === DeltaType.THINKING_DELTA &&
 				event.delta.text
 			) {
 				return (
-					<Text key={index} color="blue" dimColor>
-						{smartRenderText(event.delta.text)}
-					</Text>
+					<Box key={index} paddingLeft={1}>
+						<Text color="blue" dimColor italic wrap="wrap">
+							💭 {smartRenderText(event.delta.text)}
+						</Text>
+					</Box>
 				);
 			} else if (
 				event.delta?.type === DeltaType.SIGNATURE_DELTA &&
@@ -190,8 +245,8 @@ export const formatClaudeEvent = (
 			) {
 				return (
 					<Box key={index} marginTop={0.5}>
-						<Text dimColor>
-							✓ Signature: {truncateText(event.delta.signature, 16)}...
+						<Text color="green" dimColor>
+							✅ Verified: {truncateText(event.delta.signature, 20)}...
 						</Text>
 					</Box>
 				);
@@ -223,9 +278,9 @@ export const formatClaudeEvent = (
 
 		case ClaudeEventType.MESSAGE_STOP:
 			return (
-				<Box key={index} marginTop={1}>
+				<Box key={index} marginTop={1} borderStyle="round" borderColor="green" paddingX={1}>
 					<Text bold color="green">
-						✅ Message Complete
+						╰─ ✅ Message Complete ─╯
 					</Text>
 				</Box>
 			);
@@ -311,33 +366,42 @@ export const formatClaudeEvent = (
 			if (event.subtype === 'success' || (!event.is_error && !event.subtype)) {
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
-						<Text bold color="green">
-							✅ Task Complete
-						</Text>
-						<Box paddingLeft={2} flexDirection="column">
+						<Box borderStyle="double" borderColor="green" paddingX={1}>
+							<Text bold color="green">
+								✨ TASK COMPLETED SUCCESSFULLY ✨
+							</Text>
+						</Box>
+						<Box paddingLeft={2} flexDirection="column" marginTop={0.5}>
 							{event.duration_ms && (
-								<Text dimColor>
-									⏱️ Duration: {(event.duration_ms / 1000).toFixed(1)}s
-									{event.duration_api_ms &&
-										` (API: ${(event.duration_api_ms / 1000).toFixed(1)}s)`}
+								<Text>
+									<Text color="yellow">⏱️  Duration:</Text>
+									<Text color="cyan"> {(event.duration_ms / 1000).toFixed(1)}s</Text>
+									{event.duration_api_ms && (
+										<Text dimColor> (API: {(event.duration_api_ms / 1000).toFixed(1)}s)</Text>
+									)}
 								</Text>
 							)}
 							{event.num_turns && (
-								<Text dimColor>🔄 Turns: {event.num_turns}</Text>
+								<Text>
+									<Text color="yellow">🔄 Turns:</Text>
+									<Text color="cyan"> {event.num_turns}</Text>
+								</Text>
 							)}
 							{event.total_cost_usd && (
-								<Text dimColor>
-									💰 Cost: ${event.total_cost_usd.toFixed(4)}
+								<Text>
+									<Text color="yellow">💰 Cost:</Text>
+									<Text color="green"> ${event.total_cost_usd.toFixed(4)}</Text>
 								</Text>
 							)}
 							{event.session_id && (
-								<Text dimColor>
-									🔗 Session: {truncateText(event.session_id, 12)}
+								<Text>
+									<Text color="yellow">🔗 Session:</Text>
+									<Text dimColor> {truncateText(event.session_id, 16)}</Text>
 								</Text>
 							)}
 							{formatTokenUsage(event.usage)}
 							{event.result && (
-								<Box marginTop={0.5}>
+								<Box marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
 									<Text wrap="wrap">{smartRenderText(event.result)}</Text>
 								</Box>
 							)}

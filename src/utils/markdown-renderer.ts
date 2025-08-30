@@ -37,12 +37,18 @@ export function renderMarkdown(text: string): string {
 		// Italic text (remove * but keep text)
 		result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '_$1_');
 
-		// Code blocks (preserve with better formatting)
+		// Code blocks with enhanced formatting
 		result = result.replace(/```([\w]*)?\n([\s\S]*?)```/g, (_, lang, code) => {
 			const lines = code.split('\n');
-			const formatted = lines.map((line: string) => '│ ' + line).join('\n');
-			const langLabel = lang ? ` [${lang}]` : '';
-			return `┌─ Code${langLabel}\n${formatted}\n└─────`;
+			// Remove trailing empty line if present
+			if (lines[lines.length - 1] === '') lines.pop();
+			
+			const maxLength = Math.max(...lines.map((l: string) => l.length), 20);
+			const border = '─'.repeat(maxLength + 2);
+			const formatted = lines.map((line: string) => '│ ' + line.padEnd(maxLength) + ' │').join('\n');
+			const langLabel = lang ? ` ${lang} ` : ' code ';
+			
+			return `╭─${langLabel}${border.substring(langLabel.length)}╮\n${formatted}\n╰${border}──╯`;
 		});
 
 		// Inline code (preserve with better markers)
