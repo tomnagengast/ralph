@@ -9,26 +9,34 @@ const cli = meow(
 	`
 	Usage: 
 	  ralph init                    Initialize ralph in current directory
-	  ralph [prompt]                Run continuously with a prompt file
+	  ralph run [options]           Run continuously with prompt
 
-	Arguments:
-	  prompt                        Path to prompt file (or direct text)
+	Commands:
+	  init                          Create .ralph directory and template files
+	  run                           Start continuous execution loop
 
-	Options:
-	  --model <model>               Model to use (e.g. 'sonnet' or 'opus')
+	Options for 'run':
+	  -p, --prompt <file>           Path to prompt file (default: .ralph/prompt.md)
+	  -m, --model <model>           Model to use (e.g. 'sonnet' or 'opus')
 	  -v, --version                 Output the version number
 	  -h, --help                    Display help for command
 
 	Examples:
-	  ralph init                    Create .ralph directory and template files
-	  ralph prompt.md               Run continuously with prompt.md
-	  ralph "fix the bug"           Run with inline prompt
+	  ralph init                    Create project structure
+	  ralph run                     Run with default prompt (.ralph/prompt.md)
+	  ralph run -p custom.md        Run with custom prompt file
+	  ralph run -m opus             Run with specific model
 `,
 	{
 		importMeta: import.meta,
 		flags: {
+			prompt: {
+				type: 'string',
+				shortFlag: 'p',
+			},
 			model: {
 				type: 'string',
+				shortFlag: 'm',
 			},
 			version: {
 				type: 'boolean',
@@ -120,24 +128,37 @@ Replace this with your continuous prompt.
 	console.log('\n✨ Ralph initialized successfully!\n');
 	console.log('Next steps:');
 	console.log('  1. Edit .ralph/prompt.md with your prompt');
-	console.log('  2. Run: ralph .ralph/prompt.md\n');
+	console.log('  2. Run: ralph run\n');
 	process.exit(0);
 }
 
-// If no command provided, show help
-if (!command) {
-	console.error('Error: Please provide a prompt file or use "ralph init"\n');
+// Handle run command
+if (command === 'run') {
+	// Use provided prompt file or default to .ralph/prompt.md
+	const promptPath = cli.flags.prompt || '.ralph/prompt.md';
+	
+	// Check if prompt file exists
+	if (!fs.existsSync(promptPath)) {
+		console.error(`Error: Prompt file not found: ${promptPath}`);
+		if (!cli.flags.prompt && promptPath === '.ralph/prompt.md') {
+			console.error('\nTip: Run "ralph init" first to create the default structure.');
+		}
+		process.exit(1);
+	}
+	
+	// Pass to app for continuous run
+	const appProps = {
+		prompt: promptPath,
+		model: cli.flags.model,
+	};
+
+	render(<App {...appProps} />);
+} else if (!command) {
+	console.error('Error: Please specify a command (init or run)\n');
+	cli.showHelp();
+	process.exit(1);
+} else {
+	console.error(`Error: Unknown command "${command}"\n`);
 	cli.showHelp();
 	process.exit(1);
 }
-
-// Otherwise, treat it as a prompt and run
-const prompt = cli.input.join(' ');
-
-// Pass to app for continuous run
-const appProps = {
-	prompt,
-	model: cli.flags.model,
-};
-
-render(<App {...appProps} />);
