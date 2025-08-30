@@ -144,7 +144,6 @@ export default function RalphLoop({
 		if (isJsonMode && responseEvents.length > 0) {
 			return responseEvents.map((event, i) => {
 				const formatted = JSON.stringify(event, null, 2);
-				const lines = formatted.split('\n');
 				
 				// Add color based on event type
 				let color = 'white';
@@ -156,12 +155,7 @@ export default function RalphLoop({
 				return (
 					<Box key={i} flexDirection="column" marginBottom={1}>
 						<Text color={color}>
-							{lines.map((line, j) => (
-								<Text key={j}>
-									{line}
-									{j < lines.length - 1 ? '\n' : ''}
-								</Text>
-							)).join('')}
+							{formatted}
 						</Text>
 					</Box>
 				);
