@@ -2,11 +2,10 @@ import {execa, type ResultPromise} from 'execa';
 import fs from 'fs';
 import path from 'path';
 import {EventEmitter} from 'events';
-import type {RunConfig, RunStatus} from './types/run.js';
+import type {RunConfig} from './types/run.js';
 
 export class RunEngine extends EventEmitter {
 	private config: RunConfig;
-	private status: RunStatus;
 	private currentProcess: ResultPromise | null = null;
 	private isRunning = false;
 	private consecutiveErrors = 0;
@@ -15,15 +14,6 @@ export class RunEngine extends EventEmitter {
 		super();
 		// Config is already loaded with defaults from loadRunConfig
 		this.config = config;
-
-		this.status = {
-			state: 'idle',
-			iterationCount: 0,
-			startTime: null,
-			lastRunTime: null,
-			errors: [],
-			currentOutput: '',
-		};
 	}
 
 	async start(): Promise<void> {
@@ -32,11 +22,8 @@ export class RunEngine extends EventEmitter {
 		}
 
 		this.isRunning = true;
-		this.status.state = 'running';
-		this.status.startTime = new Date();
-		this.emit('statusUpdate', this.status);
 
-		while (this.isRunning && this.status.state === 'running') {
+		while (this.isRunning) {
 			await this.runIteration();
 
 			if (this.config.intervalMs && this.config.intervalMs > 0) {
@@ -47,40 +34,14 @@ export class RunEngine extends EventEmitter {
 
 	async stop(): Promise<void> {
 		this.isRunning = false;
-		this.status.state = 'stopped';
 
 		if (this.currentProcess) {
 			this.currentProcess.kill('SIGINT');
 			this.currentProcess = null;
 		}
-
-		this.emit('statusUpdate', this.status);
-	}
-
-	pause(): void {
-		if (this.status.state === 'running') {
-			this.status.state = 'paused';
-			this.emit('statusUpdate', this.status);
-		}
-	}
-
-	resume(): void {
-		if (this.status.state === 'paused') {
-			this.status.state = 'running';
-			this.emit('statusUpdate', this.status);
-		}
 	}
 
 	private async runIteration(): Promise<void> {
-		if (this.status.state !== 'running') {
-			return;
-		}
-
-		this.status.iterationCount++;
-		this.status.lastRunTime = new Date();
-		this.status.currentOutput = '';
-		this.emit('statusUpdate', this.status);
-
 		try {
 			const promptContent = await this.getPromptContent();
 			if (!promptContent) {
@@ -97,17 +58,13 @@ export class RunEngine extends EventEmitter {
 
 			if (this.currentProcess.stdout) {
 				this.currentProcess.stdout.on('data', (data: Buffer) => {
-					const output = data.toString();
-					this.status.currentOutput += output;
-					this.emit('output', output);
-					this.emit('statusUpdate', this.status);
+					this.emit('output', data.toString());
 				});
 			}
 
 			if (this.currentProcess.stderr) {
 				this.currentProcess.stderr.on('data', (data: Buffer) => {
-					const error = data.toString();
-					this.emit('error', error);
+					this.emit('error', data.toString());
 				});
 			}
 
@@ -121,14 +78,13 @@ export class RunEngine extends EventEmitter {
 		} catch (error) {
 			this.consecutiveErrors++;
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.status.errors.push(errorMessage);
-			this.emit('error', errorMessage);
+			this.emit('error', `${errorMessage}\n`);
 
 			if (
 				this.config.autoStopAfterErrors &&
 				this.consecutiveErrors >= this.config.autoStopAfterErrors
 			) {
-				this.emit('error', `Stopping after ${this.consecutiveErrors} consecutive errors`);
+				this.emit('error', `Stopping after ${this.consecutiveErrors} consecutive errors\n`);
 				await this.stop();
 			}
 		} finally {
@@ -170,7 +126,4 @@ export class RunEngine extends EventEmitter {
 		return args;
 	}
 
-	getStatus(): RunStatus {
-		return {...this.status};
-	}
 }

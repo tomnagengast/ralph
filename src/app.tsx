@@ -1,11 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import {useInput, useApp} from 'ink';
+import {Text} from 'ink';
 import fs from 'fs';
 import {RunEngine} from './run.js';
-import {OutputProcessor} from './output.js';
-import {RunDisplay} from './components/RunDisplay.js';
 import {loadRunConfig} from './utils/config.js';
-import type {RunStatus, RunConfig} from './types/run.js';
+import type {RunConfig} from './types/run.js';
 
 type Props = {
 	prompt: string;
@@ -15,30 +14,11 @@ type Props = {
 export default function App(props: Props) {
 	const {prompt, model} = props;
 	const {exit} = useApp();
-	const [runEngine, setRunEngine] = useState<RunEngine | null>(null);
-	const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
-	const [outputProcessor] = useState(new OutputProcessor());
-	const [outputLines, setOutputLines] = useState<string[]>([]);
 
-	// Handle keyboard input
+	// Handle keyboard input - only Ctrl+C for exit
 	useInput((input, key) => {
 		if (key.ctrl && input === 'c') {
-			if (runEngine) {
-				runEngine.stop();
-				setTimeout(() => exit(), 1000);
-			} else {
-				exit();
-			}
-		}
-		
-		if (input === 'p' || input === 'P') {
-			if (runEngine && runStatus) {
-				if (runStatus.state === 'paused') {
-					runEngine.resume();
-				} else if (runStatus.state === 'running') {
-					runEngine.pause();
-				}
-			}
+			exit();
 		}
 	});
 
@@ -53,50 +33,27 @@ export default function App(props: Props) {
 
 		const engine = new RunEngine(config);
 		
-		engine.on('statusUpdate', (status: RunStatus) => {
-			setRunStatus(status);
-		});
-		
+		// Simply pass through stdout output
 		engine.on('output', (data: string) => {
-			const outputs = outputProcessor.processStreamJson(data);
-			for (const output of outputs) {
-				const formatted = outputProcessor.formatOutput(output);
-				if (formatted) {
-					outputProcessor.addFormattedLine(formatted);
-					setOutputLines(outputProcessor.getOutputLines(config.maxOutputLines));
-				}
-			}
+			process.stdout.write(data);
 		});
 		
+		// Pass through stderr output
 		engine.on('error', (error: string) => {
-			outputProcessor.addFormattedLine(`❌ ${error}`);
-			setOutputLines(outputProcessor.getOutputLines(config.maxOutputLines));
+			process.stderr.write(error);
 		});
-		
-		setRunEngine(engine);
 		
 		// Start the run engine
 		engine.start().catch(error => {
 			console.error('Failed to start run engine:', error);
+			exit();
 		});
 		
 		return () => {
 			engine.stop();
 		};
-	}, [prompt, model]);
+	}, [prompt, model, exit]);
 
-	// Always render run display
-	if (!runStatus) {
-		return null;
-	}
-
-	return (
-		<RunDisplay
-			status={runStatus}
-			outputLines={outputLines}
-			onStop={() => runEngine?.stop()}
-			onPause={() => runEngine?.pause()}
-			onResume={() => runEngine?.resume()}
-		/>
-	);
+	// Simple status message
+	return <Text>Running ralph loop... (Press Ctrl+C to stop)</Text>;
 }
