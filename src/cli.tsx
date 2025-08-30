@@ -40,7 +40,7 @@ if (args.includes('-h') || args.includes('--help') || !command) {
     run                           Start continuous execution loop
 
   Options for 'run':
-    -p, --prompt <file>           Path to prompt file (default: .ralph/prompt.md)
+    -p, --prompt <file|text>      Path to prompt file or direct text (default: .ralph/prompt.md)
     -m, --model <model>           Model to use (e.g. 'sonnet' or 'opus')
     --verbosity <level>           Display verbosity: minimal, normal, verbose, debug
     --color-scheme <scheme>       Color scheme: default, minimal, dark, light, high-contrast, none
@@ -65,6 +65,7 @@ if (args.includes('-h') || args.includes('--help') || !command) {
     ralph init                    Create project structure
     ralph run                     Run with default prompt (.ralph/prompt.md)
     ralph run -p custom.md        Run with custom prompt file
+    ralph run -p "Fix all tests"  Run with direct text prompt
     ralph run -m opus             Run with specific model
     ralph run --color-scheme dark Run with dark color theme
     ralph run --filter-events text-only  Show only text content
@@ -151,6 +152,7 @@ Replace this with your continuous prompt.
 if (command === 'run') {
 	// Parse flags
 	let promptPath = '.ralph/prompt.md';
+	let promptText: string | undefined;
 	let model: string | undefined;
 	let verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' | undefined;
 	let colorScheme: string | undefined;
@@ -170,7 +172,14 @@ if (command === 'run') {
 
 	for (let i = 1; i < args.length; i++) {
 		if ((args[i] === '-p' || args[i] === '--prompt') && args[i + 1]) {
-			promptPath = args[i + 1]!;
+			const promptArg = args[i + 1]!;
+			// Check if it's a file path that exists
+			if (fs.existsSync(promptArg)) {
+				promptPath = promptArg;
+			} else {
+				// Treat it as direct text
+				promptText = promptArg;
+			}
 			i++;
 		} else if ((args[i] === '-m' || args[i] === '--model') && args[i + 1]) {
 			model = args[i + 1]!;
@@ -278,8 +287,8 @@ if (command === 'run') {
 		}
 	}
 
-	// Check if prompt file exists
-	if (!fs.existsSync(promptPath)) {
+	// Check if we have a prompt (either text or file)
+	if (!promptText && !fs.existsSync(promptPath)) {
 		console.error(`Error: Prompt file not found: ${promptPath}`);
 		if (promptPath === '.ralph/prompt.md') {
 			console.error(
@@ -360,7 +369,8 @@ if (command === 'run') {
 	// Render the Ink app
 	render(
 		<RalphLoop
-			promptPath={promptPath}
+			promptPath={promptText ? undefined : promptPath}
+			promptText={promptText}
 			claudeArgs={claudeArgs}
 			intervalMs={intervalMs}
 			autoStopAfterErrors={autoStopAfterErrors}

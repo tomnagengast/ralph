@@ -19,7 +19,8 @@ import {
 // Using the comprehensive ClaudeStreamEvent interface from types/claude-events.ts
 
 interface Props {
-	promptPath: string;
+	promptPath?: string;
+	promptText?: string;
 	claudeArgs: string[];
 	intervalMs: number;
 	autoStopAfterErrors: number;
@@ -31,6 +32,7 @@ interface Props {
 
 export default function RalphLoop({
 	promptPath,
+	promptText,
 	claudeArgs,
 	intervalMs,
 	autoStopAfterErrors,
@@ -102,8 +104,8 @@ export default function RalphLoop({
 
 	useEffect(() => {
 		const runIteration = async () => {
-			// Read prompt
-			const prompt = fs.readFileSync(promptPath, 'utf-8');
+			// Read prompt from file or use provided text
+			const prompt = promptText || fs.readFileSync(promptPath!, 'utf-8');
 			setPromptContent(prompt);
 			setCurrentPhase('prompt');
 			setIterationCount(prev => prev + 1);
