@@ -10,26 +10,49 @@ export function renderMarkdown(text: string): string {
 		let result = text;
 
 		// Headers (convert to uppercase with decoration)
+		result = result.replace(/^#### (.+)$/gm, '› $1');
 		result = result.replace(/^### (.+)$/gm, '▸ $1');
 		result = result.replace(/^## (.+)$/gm, '▸▸ $1');
 		result = result.replace(/^# (.+)$/gm, '▸▸▸ $1');
 
-		// Bold text (remove ** but keep text)
-		result = result.replace(/\*\*(.+?)\*\*/g, '$1');
+		// Horizontal rules
+		result = result.replace(/^---+$/gm, '━━━━━━━━━━━━━━━━━━━━');
+		result = result.replace(/^\*\*\*+$/gm, '━━━━━━━━━━━━━━━━━━━━');
+
+		// Lists (unordered)
+		result = result.replace(/^\s*[-*+] (.+)$/gm, '  • $1');
+		// Lists (ordered)
+		result = result.replace(/^\s*(\d+)\. (.+)$/gm, '  $1. $2');
+
+		// Task lists
+		result = result.replace(/^\s*- \[x\] (.+)$/gmi, '  ✓ $1');
+		result = result.replace(/^\s*- \[ \] (.+)$/gm, '  ☐ $1');
+
+		// Blockquotes
+		result = result.replace(/^> (.+)$/gm, '│ $1');
+
+		// Bold text (remove ** but keep text uppercase for emphasis)
+		result = result.replace(/\*\*(.+?)\*\*/g, (_, text) => text.toUpperCase());
 
 		// Italic text (remove * but keep text)
-		result = result.replace(/\*(.+?)\*/g, '$1');
+		result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '_$1_');
 
-		// Code blocks (preserve with simple formatting)
-		result = result.replace(/```[\s\S]*?```/g, match => {
-			return match.replace(/```/g, '---');
+		// Code blocks (preserve with better formatting)
+		result = result.replace(/```([\w]*)?\n([\s\S]*?)```/g, (_, lang, code) => {
+			const lines = code.split('\n');
+			const formatted = lines.map((line: string) => '│ ' + line).join('\n');
+			const langLabel = lang ? ` [${lang}]` : '';
+			return `┌─ Code${langLabel}\n${formatted}\n└─────`;
 		});
 
-		// Inline code (preserve with backticks)
-		result = result.replace(/`([^`]+)`/g, '`$1`');
+		// Inline code (preserve with better markers)
+		result = result.replace(/`([^`]+)`/g, '｢$1｣');
 
-		// Links (show text and URL)
-		result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+		// Links (show text with URL indicator)
+		result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ↗');
+
+		// Tables (basic support)
+		result = result.replace(/\|/g, '│');
 
 		return result;
 	} catch (error) {
@@ -48,13 +71,16 @@ export function isMarkdown(text: string): boolean {
 	const markdownPatterns = [
 		/^#{1,6}\s+/m, // Headers
 		/\*\*.*\*\*/, // Bold text
-		/\*.*\*/, // Italic text
-		/`.*`/, // Code spans
+		/(?<!\*)\*[^*]+\*(?!\*)/, // Italic text (not bold)
+		/`[^`]+`/, // Code spans
 		/```[\s\S]*```/m, // Code blocks
 		/^\s*[-*+]\s+/m, // Unordered lists
 		/^\s*\d+\.\s+/m, // Ordered lists
 		/^\s*>\s+/m, // Blockquotes
-		/\[.*\]\(.*\)/, // Links
+		/\[[^\]]+\]\([^)]+\)/, // Links
+		/^\s*---+\s*$/m, // Horizontal rules
+		/^\s*\|.*\|/m, // Tables
+		/^\s*- \[(x| )\]/mi, // Task lists
 	];
 
 	return markdownPatterns.some(pattern => pattern.test(text));

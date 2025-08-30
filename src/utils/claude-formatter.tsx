@@ -8,12 +8,30 @@ import {
 } from '../types/claude-events.js';
 import {smartRenderText} from './markdown-renderer.js';
 
-// Utility function to format JSON with proper indentation
-const formatJson = (obj: any): string => {
+// Utility function to format JSON with proper indentation and syntax highlighting
+const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 	try {
-		return JSON.stringify(obj, null, 2);
+		const jsonStr = compact
+			? JSON.stringify(obj)
+			: JSON.stringify(obj, null, 2);
+		
+		// For simple values, return as-is
+		if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean' || obj === null) {
+			return <Text color="cyan">{jsonStr}</Text>;
+		}
+		
+		// For complex objects, format with indentation
+		return (
+			<Box flexDirection="column">
+				{jsonStr.split('\n').map((line, i) => (
+					<Text key={i} dimColor>
+						{line}
+					</Text>
+				))}
+			</Box>
+		);
 	} catch {
-		return String(obj);
+		return <Text dimColor>{String(obj)}</Text>;
 	}
 };
 
@@ -78,9 +96,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.MESSAGE_START:
 			return (
 				<Box key={index} flexDirection="column" marginBottom={1}>
-					<Text bold color="magenta">
-						📬 Message Started
-					</Text>
+					<Box borderStyle="round" borderColor="magenta" paddingX={1}>
+						<Text bold color="magenta">
+							📬 MESSAGE STARTED
+						</Text>
+					</Box>
 					{event.message && (
 						<Box paddingLeft={2} flexDirection="column">
 							{event.message.model && (
@@ -216,9 +236,11 @@ export const formatClaudeEvent = (
 			const isOverloaded = event.type === ClaudeEventType.OVERLOADED_ERROR;
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
-						❌ {isOverloaded ? 'API Overloaded' : 'Error'}
-					</Text>
+					<Box borderStyle="double" borderColor="red" paddingX={1}>
+						<Text bold color="red">
+							⚠️ {isOverloaded ? 'API OVERLOADED' : 'ERROR OCCURRED'}
+						</Text>
+					</Box>
 					<Box paddingLeft={2} flexDirection="column">
 						<Text color="red">
 							{typeof event.error === 'string'
@@ -229,13 +251,51 @@ export const formatClaudeEvent = (
 							typeof event.error === 'object' &&
 							event.error.code && (
 								<Text color="red" dimColor>
-									Error code: {event.error.code}
+									🆔 Error code: {event.error.code}
+								</Text>
+							)}
+						{event.error &&
+							typeof event.error === 'object' &&
+							event.error.type && (
+								<Text color="red" dimColor>
+									🎯 Error type: {event.error.type}
 								</Text>
 							)}
 						{isOverloaded && (
-							<Text color="yellow" dimColor>
-								Try again in a few moments...
-							</Text>
+							<Box marginTop={0.5}>
+								<Text color="yellow">
+									🔄 Please retry in a few moments...
+								</Text>
+							</Box>
+						)}
+						{event.error && typeof event.error === 'object' && event.error.retry_after && (
+							<Box marginTop={0.5}>
+								<Text color="yellow">
+									⏰ Retry after: {event.error.retry_after}s
+								</Text>
+							</Box>
+						)}
+						{event.error && typeof event.error === 'object' && event.error.rate_limit && (
+							<Box marginTop={0.5} flexDirection="column">
+								<Text color="yellow" bold>
+									🚦 Rate Limit Information:
+								</Text>
+								{event.error.rate_limit.requests && (
+									<Text color="yellow" dimColor>
+										  Requests remaining: {event.error.rate_limit.requests}
+									</Text>
+								)}
+								{event.error.rate_limit.tokens && (
+									<Text color="yellow" dimColor>
+										  Tokens remaining: {event.error.rate_limit.tokens}
+									</Text>
+								)}
+								{event.error.rate_limit.reset_at && (
+									<Text color="yellow" dimColor>
+										  Resets at: {new Date(event.error.rate_limit.reset_at).toLocaleString()}
+									</Text>
+								)}
+							</Box>
 						)}
 					</Box>
 				</Box>
@@ -335,7 +395,11 @@ export const formatClaudeEvent = (
 					</Text>
 					{event.message && (
 						<Box paddingLeft={2}>
-							<Text wrap="wrap">{formatJson(event.message.content)}</Text>
+							{typeof event.message.content === 'string' ? (
+								<Text wrap="wrap">{smartRenderText(event.message.content)}</Text>
+							) : (
+								<Box>{formatJson(event.message.content)}</Box>
+							)}
 						</Box>
 					)}
 				</Box>
@@ -361,7 +425,7 @@ export const formatClaudeEvent = (
 										<Box key={i} flexDirection="column">
 											<Text color="yellow">🔧 Using tool: {content.name}</Text>
 											<Box paddingLeft={2}>
-												<Text dimColor>{formatJson(content.input)}</Text>
+												{formatJson(content.input)}
 											</Box>
 										</Box>
 									);
@@ -391,7 +455,7 @@ export const formatClaudeEvent = (
 					<Text color="yellow">🔧 Tool Use: {event.tool_name}</Text>
 					{event.tool_input && (
 						<Box paddingLeft={2}>
-							<Text dimColor>{formatJson(event.tool_input)}</Text>
+							{formatJson(event.tool_input)}
 						</Box>
 					)}
 				</Box>
@@ -407,9 +471,13 @@ export const formatClaudeEvent = (
 						)}
 					</Text>
 					<Box paddingLeft={2}>
-						<Text wrap="wrap">
-							{formatJson(event.tool_result || event.content)}
-						</Text>
+						{typeof (event.tool_result || event.content) === 'string' ? (
+							<Text wrap="wrap">
+								{smartRenderText(event.tool_result || event.content || '')}
+							</Text>
+						) : (
+							<Box>{formatJson(event.tool_result || event.content)}</Box>
+						)}
 					</Box>
 				</Box>
 			);
@@ -426,11 +494,15 @@ export const formatClaudeEvent = (
 		default:
 			// For unknown event types, show raw JSON in dimmed text with better formatting
 			return (
-				<Box key={index} marginY={0.5}>
-					<Text dimColor>
-						{event.type && `[${event.type}] `}
+				<Box key={index} marginY={0.5} flexDirection="column">
+					{event.type && (
+						<Text dimColor bold>
+							[{event.type}]
+						</Text>
+					)}
+					<Box paddingLeft={2}>
 						{formatJson(event)}
-					</Text>
+					</Box>
 				</Box>
 			);
 	}

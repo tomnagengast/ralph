@@ -90,6 +90,12 @@ export interface ErrorInfo {
 	type?: string;
 	message?: string;
 	code?: string;
+	retry_after?: number;
+	rate_limit?: {
+		requests?: number;
+		tokens?: number;
+		reset_at?: string;
+	};
 }
 
 // Comprehensive Claude CLI streaming event interface
