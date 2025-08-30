@@ -5,6 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import RalphLoop from './RalphLoop.js';
+import {
+	EventFilterPreset,
+	EventFilterConfig,
+	validateEventFilterConfig,
+	getAllPresets,
+} from './utils/event-filter.js';
+import {setGlobalColorScheme, colorSchemes} from './utils/color-schemes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +43,10 @@ if (args.includes('-h') || args.includes('--help') || !command) {
     -p, --prompt <file>           Path to prompt file (default: .ralph/prompt.md)
     -m, --model <model>           Model to use (e.g. 'sonnet' or 'opus')
     --verbosity <level>           Display verbosity: minimal, normal, verbose, debug
+    --color-scheme <scheme>       Color scheme: default, minimal, dark, light, high-contrast, none
+    --filter-events <preset>      Filter events using preset: text-only, no-system, errors-only, tools, messages, debug, all
+    --include-events <types>      Only show specific event types (comma-separated)
+    --exclude-events <types>      Hide specific event types (comma-separated)
     -v, --version                 Output the version number
     -h, --help                    Display help for command
 
@@ -44,6 +55,10 @@ if (args.includes('-h') || args.includes('--help') || !command) {
     ralph run                     Run with default prompt (.ralph/prompt.md)
     ralph run -p custom.md        Run with custom prompt file
     ralph run -m opus             Run with specific model
+    ralph run --color-scheme dark Run with dark color theme
+    ralph run --filter-events text-only  Show only text content
+    ralph run --exclude-events ping,system  Hide ping and system events
+    ralph run --include-events error,tool_use  Show only errors and tool use events
 `);
 	process.exit(command ? 0 : 1);
 }
@@ -93,6 +108,12 @@ if (command === 'init') {
 		},
 		display: {
 			verbosity: 'normal',
+			color_scheme: 'default',
+		},
+		events: {
+			filter: {
+				preset: 'all',
+			},
 		},
 	};
 
@@ -121,6 +142,10 @@ if (command === 'run') {
 	let promptPath = '.ralph/prompt.md';
 	let model: string | undefined;
 	let verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' | undefined;
+	let colorScheme: string | undefined;
+	let filterPreset: EventFilterPreset | undefined;
+	let includeEvents: string[] | undefined;
+	let excludeEvents: string[] | undefined;
 
 	for (let i = 1; i < args.length; i++) {
 		if ((args[i] === '-p' || args[i] === '--prompt') && args[i + 1]) {
@@ -139,6 +164,37 @@ if (command === 'run') {
 				);
 				process.exit(1);
 			}
+			i++;
+		} else if (args[i] === '--color-scheme' && args[i + 1]) {
+			const scheme = args[i + 1]!;
+			const availableSchemes = Object.keys(colorSchemes);
+			if (availableSchemes.includes(scheme)) {
+				colorScheme = scheme;
+			} else {
+				console.error(
+					`Error: Invalid color scheme "${scheme}". Must be one of: ${availableSchemes.join(', ')}`,
+				);
+				process.exit(1);
+			}
+			i++;
+		} else if (args[i] === '--filter-events' && args[i + 1]) {
+			const preset = args[i + 1]! as EventFilterPreset;
+			if (getAllPresets().includes(preset)) {
+				filterPreset = preset;
+			} else {
+				console.error(
+					`Error: Invalid filter preset "${preset}". Must be one of: ${getAllPresets().join(
+						', ',
+					)}`,
+				);
+				process.exit(1);
+			}
+			i++;
+		} else if (args[i] === '--include-events' && args[i + 1]) {
+			includeEvents = args[i + 1]!.split(',').map(s => s.trim());
+			i++;
+		} else if (args[i] === '--exclude-events' && args[i + 1]) {
+			excludeEvents = args[i + 1]!.split(',').map(s => s.trim());
 			i++;
 		}
 	}
@@ -185,6 +241,27 @@ if (command === 'run') {
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
 	const settingsVerbosity = settings.display?.verbosity || 'normal';
 	const finalVerbosity = verbosity ?? settingsVerbosity;
+	
+	// Set up color scheme
+	const settingsColorScheme = settings.display?.color_scheme || 'default';
+	const finalColorScheme = colorScheme ?? settingsColorScheme;
+	setGlobalColorScheme(finalColorScheme);
+
+	// Build event filter config
+	const eventFilterConfig: EventFilterConfig = {
+		preset:
+			filterPreset || (settings.events?.filter?.preset as EventFilterPreset),
+		include: includeEvents || settings.events?.filter?.include,
+		exclude: excludeEvents || settings.events?.filter?.exclude,
+	};
+
+	// Validate event filter config
+	const filterErrors = validateEventFilterConfig(eventFilterConfig);
+	if (filterErrors.length > 0) {
+		console.error('Event filter configuration errors:');
+		filterErrors.forEach(error => console.error(`  - ${error}`));
+		process.exit(1);
+	}
 
 	// Render the Ink app
 	render(
@@ -194,6 +271,7 @@ if (command === 'run') {
 			intervalMs={intervalMs}
 			autoStopAfterErrors={autoStopAfterErrors}
 			verbosity={finalVerbosity}
+			eventFilter={eventFilterConfig}
 		/>,
 	);
 } else {

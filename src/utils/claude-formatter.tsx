@@ -7,9 +7,12 @@ import {
 	DeltaType,
 } from '../types/claude-events.js';
 import {smartRenderText} from './markdown-renderer.js';
+import {getColorManager} from './color-schemes.js';
 
 // Utility function to format JSON with proper indentation and syntax highlighting
 const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
+	const colorManager = getColorManager();
+	
 	try {
 		const jsonStr = compact
 			? JSON.stringify(obj)
@@ -22,7 +25,7 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 			typeof obj === 'boolean' ||
 			obj === null
 		) {
-			return <Text color="cyan">{jsonStr}</Text>;
+			return <Text color={colorManager.jsonNumber()}>{jsonStr}</Text>;
 		}
 
 		// For complex objects, format with syntax highlighting
@@ -41,9 +44,9 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 
 						return (
 							<Text key={i}>
-								<Text color="magenta">{propName}</Text>
+								<Text color={colorManager.jsonProperty()}>{propName}</Text>
 								<Text dimColor>:</Text>
-								<Text color={value.includes('"') ? 'green' : 'cyan'}>
+								<Text color={value.includes('"') ? colorManager.jsonString() : colorManager.jsonNumber()}>
 									{value}
 								</Text>
 							</Text>
@@ -55,7 +58,7 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 						line.includes(']')
 					) {
 						// Brackets
-						color = 'yellow';
+						color = colorManager.jsonBracket();
 						dimColor = true;
 					} else if (
 						line.includes('true') ||
@@ -63,10 +66,10 @@ const formatJson = (obj: any, compact: boolean = false): React.ReactNode => {
 						line.includes('null')
 					) {
 						// Boolean/null values
-						color = 'cyan';
+						color = colorManager.jsonBoolean();
 					} else if (/\d+/.test(line)) {
 						// Numbers
-						color = 'cyan';
+						color = colorManager.jsonNumber();
 					} else {
 						// Default
 						dimColor = true;
@@ -155,6 +158,7 @@ export const formatClaudeEvent = (
 	index: number,
 	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug' = 'normal',
 ): React.ReactNode => {
+	const colorManager = getColorManager();
 	// Early return for minimal verbosity - only show essential content
 	if (verbosity === 'minimal') {
 		switch (event.type) {
@@ -179,11 +183,11 @@ export const formatClaudeEvent = (
 				const isOverloaded = event.type === ClaudeEventType.OVERLOADED_ERROR;
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
-						<Text bold color="red">
+						<Text bold color={colorManager.error()}>
 							⚠️ {isOverloaded ? 'API OVERLOADED' : 'ERROR OCCURRED'}
 						</Text>
 						<Box paddingLeft={2}>
-							<Text color="red">
+							<Text color={colorManager.error()}>
 								{typeof event.error === 'string'
 									? event.error
 									: event.error?.message || 'Unknown error occurred'}
@@ -210,8 +214,8 @@ export const formatClaudeEvent = (
 			if (verbosity === 'debug') {
 				return (
 					<Box key={index} flexDirection="column" marginBottom={1}>
-						<Box borderStyle="round" borderColor="magenta" paddingX={1}>
-							<Text bold color="magenta">
+						<Box borderStyle="round" borderColor={colorManager.messageStart()} paddingX={1}>
+							<Text bold color={colorManager.messageStart()}>
 								╭─ 📬 MESSAGE STARTED ─╮
 							</Text>
 						</Box>
@@ -219,13 +223,13 @@ export const formatClaudeEvent = (
 							<Box paddingLeft={2} flexDirection="column">
 								{event.message.model && (
 									<Text>
-										<Text color="blue">Model:</Text>
-										<Text color="cyan"> {event.message.model}</Text>
+										<Text color={colorManager.info()}>Model:</Text>
+										<Text color={colorManager.primary()}> {event.message.model}</Text>
 									</Text>
 								)}
 								{event.message.id && (
 									<Text>
-										<Text color="blue">ID:</Text>
+										<Text color={colorManager.info()}>ID:</Text>
 										<Text dimColor> {event.message.id}</Text>
 									</Text>
 								)}
@@ -243,8 +247,8 @@ export const formatClaudeEvent = (
 			} else if (verbosity === 'verbose') {
 				return (
 					<Box key={index} flexDirection="column" marginBottom={1}>
-						<Box borderStyle="round" borderColor="magenta" paddingX={1}>
-							<Text bold color="magenta">
+						<Box borderStyle="round" borderColor={colorManager.messageStart()} paddingX={1}>
+							<Text bold color={colorManager.messageStart()}>
 								╭─ 📬 MESSAGE STARTED ─╮
 							</Text>
 						</Box>
@@ -252,13 +256,13 @@ export const formatClaudeEvent = (
 							<Box paddingLeft={2} flexDirection="column">
 								{event.message.model && (
 									<Text>
-										<Text color="blue">Model:</Text>
-										<Text color="cyan"> {event.message.model}</Text>
+										<Text color={colorManager.info()}>Model:</Text>
+										<Text color={colorManager.primary()}> {event.message.model}</Text>
 									</Text>
 								)}
 								{event.message.id && (
 									<Text>
-										<Text color="blue">ID:</Text>
+										<Text color={colorManager.info()}>ID:</Text>
 										<Text dimColor> {event.message.id}</Text>
 									</Text>
 								)}
@@ -271,7 +275,7 @@ export const formatClaudeEvent = (
 				// Normal verbosity - simplified display
 				return (
 					<Box key={index} marginBottom={0.5}>
-						<Text bold color="magenta">
+						<Text bold color={colorManager.secondary()}>
 							📬 Message Started
 						</Text>
 						{event.message?.model && (
@@ -285,43 +289,43 @@ export const formatClaudeEvent = (
 			if (verbosity === 'debug') {
 				return (
 					<Box key={index} flexDirection="column" marginBottom={0.5}>
-						<Text color="cyan">
+						<Text color={colorManager.primary()}>
 							▶ Content Block
 							{event.index !== undefined ? ` #${event.index}` : ''}
 						</Text>
 						{event.content_block && (
 							<>
 								{event.content_block.type === ContentBlockType.TOOL_USE && (
-									<Text color="yellow">
+									<Text color={colorManager.warning()}>
 										{' '}
 										🔧 Tool: {event.content_block.name}
 									</Text>
 								)}
 								{event.content_block.type === ContentBlockType.THINKING && (
-									<Text color="blue"> 🤔 Thinking...</Text>
+									<Text color={colorManager.thinking()}> 🤔 Thinking...</Text>
 								)}
 								{event.content_block.type === ContentBlockType.IMAGE && (
-									<Text color="magenta"> 🖼️ Image</Text>
+									<Text color={colorManager.secondary()}> 🖼️ Image</Text>
 								)}
 								{event.content_block.type === ContentBlockType.DOCUMENT && (
-									<Text color="green">
+									<Text color={colorManager.success()}>
 										{' '}
 										📄 Document: {event.content_block.document?.name}
 									</Text>
 								)}
 								{event.content_block.type === ContentBlockType.WEB_SEARCH && (
-									<Text color="cyan"> 🌐 Web Search</Text>
+									<Text color={colorManager.primary()}> 🌐 Web Search</Text>
 								)}
 								{event.content_block.type ===
 									ContentBlockType.SERVER_TOOL_USE && (
-									<Text color="orange">
+									<Text color={colorManager.toolUse()}>
 										{' '}
 										🔨 Server Tool: {event.content_block.name}
 									</Text>
 								)}
 								{event.content_block.type ===
 									ContentBlockType.REDACTED_THINKING && (
-									<Text color="red"> 🔒 Redacted Thinking (Safety)</Text>
+									<Text color={colorManager.error()}> 🔒 Redacted Thinking (Safety)</Text>
 								)}
 							</>
 						)}
@@ -336,43 +340,43 @@ export const formatClaudeEvent = (
 			} else if (verbosity === 'verbose') {
 				return (
 					<Box key={index} marginBottom={0.5}>
-						<Text color="cyan">
+						<Text color={colorManager.primary()}>
 							▶ Content Block
 							{event.index !== undefined ? ` #${event.index}` : ''}
 						</Text>
 						{event.content_block && (
 							<>
 								{event.content_block.type === ContentBlockType.TOOL_USE && (
-									<Text color="yellow">
+									<Text color={colorManager.warning()}>
 										{' '}
 										🔧 Tool: {event.content_block.name}
 									</Text>
 								)}
 								{event.content_block.type === ContentBlockType.THINKING && (
-									<Text color="blue"> 🤔 Thinking...</Text>
+									<Text color={colorManager.thinking()}> 🤔 Thinking...</Text>
 								)}
 								{event.content_block.type === ContentBlockType.IMAGE && (
-									<Text color="magenta"> 🖼️ Image</Text>
+									<Text color={colorManager.secondary()}> 🖼️ Image</Text>
 								)}
 								{event.content_block.type === ContentBlockType.DOCUMENT && (
-									<Text color="green">
+									<Text color={colorManager.success()}>
 										{' '}
 										📄 Document: {event.content_block.document?.name}
 									</Text>
 								)}
 								{event.content_block.type === ContentBlockType.WEB_SEARCH && (
-									<Text color="cyan"> 🌐 Web Search</Text>
+									<Text color={colorManager.primary()}> 🌐 Web Search</Text>
 								)}
 								{event.content_block.type ===
 									ContentBlockType.SERVER_TOOL_USE && (
-									<Text color="orange">
+									<Text color={colorManager.toolUse()}>
 										{' '}
 										🔨 Server Tool: {event.content_block.name}
 									</Text>
 								)}
 								{event.content_block.type ===
 									ContentBlockType.REDACTED_THINKING && (
-									<Text color="red"> 🔒 Redacted Thinking (Safety)</Text>
+									<Text color={colorManager.error()}> 🔒 Redacted Thinking (Safety)</Text>
 								)}
 							</>
 						)}
@@ -383,13 +387,13 @@ export const formatClaudeEvent = (
 				if (event.content_block) {
 					if (event.content_block.type === ContentBlockType.TOOL_USE) {
 						return (
-							<Text key={index} color="yellow">
+							<Text key={index} color={colorManager.warning()}>
 								🔧 Tool: {event.content_block.name}
 							</Text>
 						);
 					} else if (event.content_block.type === ContentBlockType.THINKING) {
 						return (
-							<Text key={index} color="blue">
+							<Text key={index} color={colorManager.info()}>
 								🤔 Thinking...
 							</Text>
 						);
@@ -420,7 +424,7 @@ export const formatClaudeEvent = (
 				} catch {
 					// If not valid JSON yet, show as-is
 					return (
-						<Text key={index} color="yellow" dimColor>
+						<Text key={index} color={colorManager.warning()} dimColor>
 							{event.delta.partial_json}
 						</Text>
 					);
@@ -431,7 +435,7 @@ export const formatClaudeEvent = (
 			) {
 				return (
 					<Box key={index} paddingLeft={1}>
-						<Text color="blue" dimColor italic wrap="wrap">
+						<Text color={colorManager.info()} dimColor italic wrap="wrap">
 							💭 {smartRenderText(event.delta.text)}
 						</Text>
 					</Box>
@@ -442,7 +446,7 @@ export const formatClaudeEvent = (
 			) {
 				return (
 					<Box key={index} marginTop={0.5}>
-						<Text color="green" dimColor>
+						<Text color={colorManager.success()} dimColor>
 							✅ Verified: {truncateText(event.delta.signature, 20)}...
 						</Text>
 					</Box>
@@ -461,7 +465,7 @@ export const formatClaudeEvent = (
 			if (event.delta?.stop_reason || event.delta?.usage) {
 				return (
 					<Box key={index} flexDirection="column" marginTop={1}>
-						<Text color="magenta">📊 Message Update</Text>
+						<Text color={colorManager.secondary()}>📊 Message Update</Text>
 						<Box paddingLeft={2} flexDirection="column">
 							{event.delta.stop_reason && (
 								<Text>Stop reason: {event.delta.stop_reason}</Text>
@@ -480,10 +484,10 @@ export const formatClaudeEvent = (
 						key={index}
 						marginTop={1}
 						borderStyle="round"
-						borderColor="green"
+						borderColor={colorManager.success()}
 						paddingX={1}
 					>
-						<Text bold color="green">
+						<Text bold color={colorManager.success()}>
 							╰─ ✅ Message Complete ─╯
 						</Text>
 						{verbosity === 'debug' && (
@@ -498,7 +502,7 @@ export const formatClaudeEvent = (
 				);
 			} else if (verbosity === 'normal') {
 				return (
-					<Text key={index} color="green" bold>
+					<Text key={index} color={colorManager.success()} bold>
 						✅ Complete
 					</Text>
 				);
@@ -524,13 +528,13 @@ export const formatClaudeEvent = (
 			const isOverloaded = event.type === ClaudeEventType.OVERLOADED_ERROR;
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Box borderStyle="double" borderColor="red" paddingX={1}>
-						<Text bold color="red">
+					<Box borderStyle="double" borderColor={colorManager.error()} paddingX={1}>
+						<Text bold color={colorManager.error()}>
 							⚠️ {isOverloaded ? 'API OVERLOADED' : 'ERROR OCCURRED'}
 						</Text>
 					</Box>
 					<Box paddingLeft={2} flexDirection="column">
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'Unknown error occurred'}
@@ -538,27 +542,27 @@ export const formatClaudeEvent = (
 						{event.error &&
 							typeof event.error === 'object' &&
 							event.error.code && (
-								<Text color="red" dimColor>
+								<Text color={colorManager.error()} dimColor>
 									🆔 Error code: {event.error.code}
 								</Text>
 							)}
 						{event.error &&
 							typeof event.error === 'object' &&
 							event.error.type && (
-								<Text color="red" dimColor>
+								<Text color={colorManager.error()} dimColor>
 									🎯 Error type: {event.error.type}
 								</Text>
 							)}
 						{isOverloaded && (
 							<Box marginTop={0.5}>
-								<Text color="yellow">🔄 Please retry in a few moments...</Text>
+								<Text color={colorManager.warning()}>🔄 Please retry in a few moments...</Text>
 							</Box>
 						)}
 						{event.error &&
 							typeof event.error === 'object' &&
 							event.error.retry_after && (
 								<Box marginTop={0.5}>
-									<Text color="yellow">
+									<Text color={colorManager.warning()}>
 										⏰ Retry after: {event.error.retry_after}s
 									</Text>
 								</Box>
@@ -567,21 +571,21 @@ export const formatClaudeEvent = (
 							typeof event.error === 'object' &&
 							event.error.rate_limit && (
 								<Box marginTop={0.5} flexDirection="column">
-									<Text color="yellow" bold>
+									<Text color={colorManager.warning()} bold>
 										🚦 Rate Limit Information:
 									</Text>
 									{event.error.rate_limit.requests && (
-										<Text color="yellow" dimColor>
+										<Text color={colorManager.warning()} dimColor>
 											Requests remaining: {event.error.rate_limit.requests}
 										</Text>
 									)}
 									{event.error.rate_limit.tokens && (
-										<Text color="yellow" dimColor>
+										<Text color={colorManager.warning()} dimColor>
 											Tokens remaining: {event.error.rate_limit.tokens}
 										</Text>
 									)}
 									{event.error.rate_limit.reset_at && (
-										<Text color="yellow" dimColor>
+										<Text color={colorManager.warning()} dimColor>
 											Resets at:{' '}
 											{new Date(
 												event.error.rate_limit.reset_at,
@@ -598,16 +602,16 @@ export const formatClaudeEvent = (
 			if (event.subtype === 'success' || (!event.is_error && !event.subtype)) {
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
-						<Box borderStyle="double" borderColor="green" paddingX={1}>
-							<Text bold color="green">
+						<Box borderStyle="double" borderColor={colorManager.success()} paddingX={1}>
+							<Text bold color={colorManager.success()}>
 								✨ TASK COMPLETED SUCCESSFULLY ✨
 							</Text>
 						</Box>
 						<Box paddingLeft={2} flexDirection="column" marginTop={0.5}>
 							{event.duration_ms && (
 								<Text>
-									<Text color="yellow">⏱️ Duration:</Text>
-									<Text color="cyan">
+									<Text color={colorManager.warning()}>⏱️ Duration:</Text>
+									<Text color={colorManager.primary()}>
 										{' '}
 										{(event.duration_ms / 1000).toFixed(1)}s
 									</Text>
@@ -621,19 +625,19 @@ export const formatClaudeEvent = (
 							)}
 							{event.num_turns && (
 								<Text>
-									<Text color="yellow">🔄 Turns:</Text>
-									<Text color="cyan"> {event.num_turns}</Text>
+									<Text color={colorManager.warning()}>🔄 Turns:</Text>
+									<Text color={colorManager.primary()}> {event.num_turns}</Text>
 								</Text>
 							)}
 							{event.total_cost_usd && (
 								<Text>
-									<Text color="yellow">💰 Cost:</Text>
-									<Text color="green"> ${event.total_cost_usd.toFixed(4)}</Text>
+									<Text color={colorManager.warning()}>💰 Cost:</Text>
+									<Text color={colorManager.success()}> ${event.total_cost_usd.toFixed(4)}</Text>
 								</Text>
 							)}
 							{event.session_id && (
 								<Text>
-									<Text color="yellow">🔗 Session:</Text>
+									<Text color={colorManager.warning()}>🔗 Session:</Text>
 									<Text dimColor> {truncateText(event.session_id, 16)}</Text>
 								</Text>
 							)}
@@ -642,7 +646,7 @@ export const formatClaudeEvent = (
 								<Box
 									marginTop={1}
 									borderStyle="single"
-									borderColor="gray"
+									borderColor={colorManager.borderSecondary()}
 									paddingX={1}
 								>
 									<Text wrap="wrap">{smartRenderText(event.result)}</Text>
@@ -654,12 +658,12 @@ export const formatClaudeEvent = (
 			} else if (event.subtype === 'error' || event.is_error) {
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
-						<Text bold color="red">
+						<Text bold color={colorManager.error()}>
 							❌ Task Failed
 						</Text>
 						{event.result && (
 							<Box paddingLeft={2}>
-								<Text color="red">{smartRenderText(event.result)}</Text>
+								<Text color={colorManager.error()}>{smartRenderText(event.result)}</Text>
 							</Box>
 						)}
 					</Box>
@@ -671,7 +675,7 @@ export const formatClaudeEvent = (
 			if (event.subtype === 'init') {
 				return (
 					<Box key={index} flexDirection="column" marginY={1}>
-						<Text bold color="blue">
+						<Text bold color={colorManager.info()}>
 							🚀 System Initialized
 						</Text>
 						<Box paddingLeft={2} flexDirection="column">
@@ -703,7 +707,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.USER:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text bold color="green">
+					<Text bold color={colorManager.success()}>
 						👤 User
 					</Text>
 					{event.message && (
@@ -723,7 +727,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.ASSISTANT:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text bold color="blue">
+					<Text bold color={colorManager.info()}>
 						🤖 Assistant
 					</Text>
 					{event.message && (
@@ -738,14 +742,14 @@ export const formatClaudeEvent = (
 								} else if (content.type === ContentBlockType.TOOL_USE) {
 									return (
 										<Box key={i} flexDirection="column">
-											<Text color="yellow">🔧 Using tool: {content.name}</Text>
+											<Text color={colorManager.toolUse()}>🔧 Using tool: {content.name}</Text>
 											<Box paddingLeft={2}>{formatJson(content.input)}</Box>
 										</Box>
 									);
 								} else if (content.type === ContentBlockType.THINKING) {
 									return (
 										<Box key={i} flexDirection="column">
-											<Text color="blue">🤔 Thinking</Text>
+											<Text color={colorManager.thinking()}>🤔 Thinking</Text>
 											<Box paddingLeft={2}>
 												<Text dimColor wrap="wrap">
 													{smartRenderText(content.text)}
@@ -758,7 +762,7 @@ export const formatClaudeEvent = (
 								) {
 									return (
 										<Box key={i} flexDirection="column">
-											<Text color="red">🔒 Redacted Thinking</Text>
+											<Text color={colorManager.error()}>🔒 Redacted Thinking</Text>
 											<Box paddingLeft={2}>
 												<Text dimColor italic>
 													[Content removed by safety system]
@@ -778,7 +782,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.TOOL_USE:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text color="yellow">🔧 Tool Use: {event.tool_name}</Text>
+					<Text color={colorManager.toolUse()}>🔧 Tool Use: {event.tool_name}</Text>
 					{event.tool_input && (
 						<Box paddingLeft={2}>{formatJson(event.tool_input)}</Box>
 					)}
@@ -788,7 +792,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.TOOL_RESULT:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text color="cyan">
+					<Text color={colorManager.primary()}>
 						📋 Tool Result
 						{event.tool_use_id && (
 							<Text dimColor> (ID: {truncateText(event.tool_use_id, 8)})</Text>
@@ -810,7 +814,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.TOOL_USE_START:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text color="yellow">
+					<Text color={colorManager.warning()}>
 						🔧 Tool Stream Start: {event.tool_name}
 						{event.tool_use_id && (
 							<Text dimColor> [{truncateText(event.tool_use_id, 8)}]</Text>
@@ -821,7 +825,7 @@ export const formatClaudeEvent = (
 
 		case ClaudeEventType.TOOL_USE_DELTA:
 			return (
-				<Text key={index} color="yellow" dimColor>
+				<Text key={index} color={colorManager.warning()} dimColor>
 					{event.delta?.partial_json || ''}
 				</Text>
 			);
@@ -837,7 +841,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.THINKING_BLOCK_START:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text bold color="blue">
+					<Text bold color={colorManager.info()}>
 						🧠 Extended Thinking Started
 					</Text>
 				</Box>
@@ -845,7 +849,7 @@ export const formatClaudeEvent = (
 
 		case ClaudeEventType.THINKING_BLOCK_DELTA:
 			return (
-				<Text key={index} color="blue" dimColor wrap="wrap">
+				<Text key={index} color={colorManager.info()} dimColor wrap="wrap">
 					{smartRenderText(event.delta?.text || '')}
 				</Text>
 			);
@@ -871,7 +875,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.SEARCH_RESULT_START:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text bold color="cyan">
+					<Text bold color={colorManager.primary()}>
 						🔍 Search Results
 					</Text>
 				</Box>
@@ -880,7 +884,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.SEARCH_RESULT_DELTA:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text color="cyan" wrap="wrap">
+					<Text color={colorManager.primary()} wrap="wrap">
 						{smartRenderText(event.delta?.text || event.content || '')}
 					</Text>
 				</Box>
@@ -897,8 +901,8 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CODE_START:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Box borderStyle="single" borderColor="magenta" paddingX={1}>
-						<Text bold color="magenta">
+					<Box borderStyle="single" borderColor={colorManager.messageStart()} paddingX={1}>
+						<Text bold color={colorManager.secondary()}>
 							💻 Code Execution
 						</Text>
 					</Box>
@@ -908,14 +912,14 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CODE_OUTPUT:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text color="gray">{event.content || event.text || ''}</Text>
+					<Text color={colorManager.textDim()}>{event.content || event.text || ''}</Text>
 				</Box>
 			);
 
 		case ClaudeEventType.CODE_ERROR:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text color="red">
+					<Text color={colorManager.error()}>
 						❌ Code Error:{' '}
 						{typeof event.error === 'string'
 							? event.error
@@ -935,7 +939,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.FILE_START:
 			return (
 				<Box key={index} flexDirection="column" marginY={0.5}>
-					<Text bold color="green">
+					<Text bold color={colorManager.success()}>
 						📁 Processing File: {event['file_name'] || 'Unknown'}
 					</Text>
 				</Box>
@@ -951,7 +955,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.FILE_ERROR:
 			return (
 				<Box key={index} paddingLeft={2}>
-					<Text color="red">
+					<Text color={colorManager.error()}>
 						❌ File Error:{' '}
 						{typeof event.error === 'string'
 							? event.error
@@ -971,7 +975,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CONNECTION_START:
 			return (
 				<Box key={index} marginY={0.5}>
-					<Text color="green">🔗 Connection Established</Text>
+					<Text color={colorManager.success()}>🔗 Connection Established</Text>
 				</Box>
 			);
 
@@ -985,7 +989,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CONNECTION_ERROR:
 			return (
 				<Box key={index} marginY={0.5}>
-					<Text color="red">
+					<Text color={colorManager.error()}>
 						❌ Connection Error:{' '}
 						{typeof event.error === 'string'
 							? event.error
@@ -997,7 +1001,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.CONNECTION_CLOSE:
 			return (
 				<Box key={index} marginY={0.5}>
-					<Text color="yellow">🔗 Connection Closed</Text>
+					<Text color={colorManager.warning()}>🔗 Connection Closed</Text>
 				</Box>
 			);
 
@@ -1005,11 +1009,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.INVALID_REQUEST_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						⚠️ Invalid Request (400)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message ||
@@ -1022,11 +1026,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.AUTHENTICATION_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						🔒 Authentication Failed (401)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'API key is invalid or missing'}
@@ -1038,11 +1042,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.PERMISSION_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						🚫 Permission Denied (403)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message ||
@@ -1055,11 +1059,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.NOT_FOUND_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						❓ Not Found (404)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'Resource not found'}
@@ -1071,11 +1075,11 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.REQUEST_TOO_LARGE:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						📦 Request Too Large (413)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'Request exceeds 32MB limit'}
@@ -1087,17 +1091,17 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.RATE_LIMIT_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						⏱️ Rate Limit Exceeded (429)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'Too many requests, please slow down'}
 						</Text>
 						{event['retry_after'] && (
-							<Text color="yellow">Retry after: {event['retry_after']}s</Text>
+							<Text color={colorManager.warning()}>Retry after: {event['retry_after']}s</Text>
 						)}
 					</Box>
 				</Box>
@@ -1106,16 +1110,16 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.API_ERROR:
 			return (
 				<Box key={index} flexDirection="column" marginY={1}>
-					<Text bold color="red">
+					<Text bold color={colorManager.error()}>
 						💥 API Error (500)
 					</Text>
 					<Box paddingLeft={2}>
-						<Text color="red">
+						<Text color={colorManager.error()}>
 							{typeof event.error === 'string'
 								? event.error
 								: event.error?.message || 'Internal Anthropic system error'}
 						</Text>
-						<Text color="yellow">Please try again later</Text>
+						<Text color={colorManager.warning()}>Please try again later</Text>
 					</Box>
 				</Box>
 			);
@@ -1124,7 +1128,7 @@ export const formatClaudeEvent = (
 		case ClaudeEventType.TEXT:
 		case ClaudeEventType.CONTENT:
 			return (
-				<Text key={index} color="green" wrap="wrap">
+				<Text key={index} color={colorManager.success()} wrap="wrap">
 					{smartRenderText(event.text || event.content || '')}
 				</Text>
 			);

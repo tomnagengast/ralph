@@ -8,6 +8,8 @@ import {
 	groupTextDeltas,
 	formatGroupedTextDeltas,
 } from './utils/claude-formatter.js';
+import {EventFilterConfig, filterEvents} from './utils/event-filter.js';
+import {getColorManager} from './utils/color-schemes.js';
 
 // Using the comprehensive ClaudeStreamEvent interface from types/claude-events.ts
 
@@ -17,6 +19,7 @@ interface Props {
 	intervalMs: number;
 	autoStopAfterErrors: number;
 	verbosity: 'minimal' | 'normal' | 'verbose' | 'debug';
+	eventFilter?: EventFilterConfig;
 }
 
 export default function RalphLoop({
@@ -25,6 +28,7 @@ export default function RalphLoop({
 	intervalMs,
 	autoStopAfterErrors,
 	verbosity,
+	eventFilter,
 }: Props) {
 	const {exit} = useApp();
 	const [iterationCount, setIterationCount] = useState(0);
@@ -90,6 +94,7 @@ export default function RalphLoop({
 							try {
 								const event = JSON.parse(line) as ClaudeStreamEvent;
 								events.push(event);
+								// Update display with all events (filtering happens in formatResponse)
 								setResponseEvents([...events]);
 							} catch {
 								// Not JSON, treat as raw
@@ -145,8 +150,10 @@ export default function RalphLoop({
 	// Format response for display
 	const formatResponse = () => {
 		if (isJsonMode && responseEvents.length > 0) {
+			// Filter events based on configuration
+			const filteredEvents = filterEvents(responseEvents, eventFilter);
 			// Group consecutive text deltas for better readability
-			const groupedEvents = groupTextDeltas(responseEvents);
+			const groupedEvents = groupTextDeltas(filteredEvents);
 
 			return (
 				<Box flexDirection="column">
@@ -155,7 +162,7 @@ export default function RalphLoop({
 							// Render grouped text deltas as a single block
 							const combinedText = formatGroupedTextDeltas(item);
 							return (
-								<Text key={i} color="green" wrap="wrap">
+								<Text key={i} color={getColorManager().promptSection()} wrap="wrap">
 									{combinedText}
 								</Text>
 							);
@@ -172,38 +179,47 @@ export default function RalphLoop({
 	return (
 		<Box flexDirection="column">
 			<Box marginBottom={1}>
-				<Text bold color="cyan">
+				<Text bold color={getColorManager().primary()}>
 					Ralph Loop Running
 				</Text>
 				<Text dimColor> (Press Ctrl+C to stop)</Text>
 			</Box>
 
 			<Box marginBottom={1}>
-				<Text bold color="magenta">
+				<Text bold color={getColorManager().iterationInfo()}>
 					🔄 Iteration #{iterationCount} - {timestamp}
 				</Text>
 				{consecutiveErrors > 0 && (
-					<Text color="yellow"> ⚠️ {consecutiveErrors} consecutive errors</Text>
+					<Text color={getColorManager().timing()}> ⚠️ {consecutiveErrors} consecutive errors</Text>
 				)}
 			</Box>
 
 			<Box flexDirection="column" marginBottom={1}>
-				<Text bold color="green">
+				<Text bold color={getColorManager().promptSection()}>
 					📝 PROMPT:
 				</Text>
-				<Box borderStyle="single" borderColor="green" paddingX={1}>
+				<Box borderStyle="single" borderColor={getColorManager().promptSection()} paddingX={1}>
 					<Text>{promptContent || 'Loading...'}</Text>
 				</Box>
 			</Box>
 
 			<Box flexDirection="column">
-				<Text bold color="blue">
+				<Text bold color={getColorManager().responseSection()}>
 					🤖 CLAUDE RESPONSE:{' '}
 					{isJsonMode && <Text dimColor>(JSON Stream Mode)</Text>}
+					{eventFilter &&
+						(eventFilter.preset ||
+							eventFilter.include ||
+							eventFilter.exclude) && (
+							<Text dimColor>
+								{' '}
+								(Filtered: {eventFilter.preset || 'custom'})
+							</Text>
+						)}
 				</Text>
 				<Box
 					borderStyle="single"
-					borderColor="blue"
+					borderColor={getColorManager().responseSection()}
 					paddingX={1}
 					minHeight={10}
 					flexDirection="column"
@@ -213,7 +229,7 @@ export default function RalphLoop({
 					) : currentPhase === 'waiting' ? (
 						<>
 							{formatResponse()}
-							<Text color="yellow">
+							<Text color={getColorManager().timing()}>
 								{'\n'}⏱️ Waiting {intervalMs}ms before next iteration...
 							</Text>
 						</>
@@ -225,7 +241,7 @@ export default function RalphLoop({
 
 			{lastError && (
 				<Box marginTop={1}>
-					<Text color="red">❌ Last Error: {lastError}</Text>
+					<Text color={getColorManager().error()}>❌ Last Error: {lastError}</Text>
 				</Box>
 			)}
 		</Box>

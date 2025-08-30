@@ -10,5 +10,14 @@
 			"--output-format",
 			"stream-json"
 		]
+	},
+	"display": {
+		"verbosity": "normal",
+		"color_scheme": "default"
+	},
+	"events": {
+		"filter": {
+			"preset": "all"
+		}
 	}
 }
