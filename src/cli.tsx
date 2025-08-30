@@ -9,16 +9,17 @@ const cli = meow(
 	`
 	Usage: ralph [options] [command] [prompt]
 
-	ralph - starts an interactive session
+	ralph - starts an interactive session or continuous run
 
 	Arguments:
 	  prompt                                            Your prompt or path to prompt file
 
 	Options:
+	  --run                                             Start continuous run mode
 	  -d, --debug [filter]                              Enable debug mode with optional category filtering (e.g., "api,hooks" or "!statsig,!file")
 	  --verbose                                         Override verbose mode setting from config
 	  -p, --print                                       Provide prompt text (alternative to positional arguments)
-	  --output-format <format>                          Output format (reserved for future use): "text" (default), "json" (single result), or "stream-json" (realtime streaming)
+	  --output-format <format>                          Output format: "text" (default), "json" (single result), or "stream-json" (realtime streaming)
 	  -c, --continue                                    Continue the most recent conversation
 	  -r, --resume [sessionId]                          Resume a conversation - provide a session ID or interactively select a conversation to resume
 	  --model <model>                                   Model for the current session. Provide an alias for the latest model (e.g. 'sonnet' or 'opus') or a model's full name
@@ -36,6 +37,9 @@ const cli = meow(
 	{
 		importMeta: import.meta,
 		flags: {
+			run: {
+				type: 'boolean',
+			},
 			debug: {
 				type: 'string',
 				shortFlag: 'd',
@@ -179,6 +183,7 @@ const prompt = promptArg || '';
 // Pass all flags to the app
 const appProps = {
 	prompt,
+	run: cli.flags.run,
 	debug: cli.flags.debug,
 	verbose: cli.flags.verbose,
 	outputFormat: cli.flags.outputFormat,
