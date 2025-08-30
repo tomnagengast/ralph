@@ -145,12 +145,58 @@ export default function RalphLoop({
 					for (const line of lines) {
 						if (line.trim()) {
 							try {
-								const event = JSON.parse(line) as ClaudeStreamEvent;
+								const parsed = JSON.parse(line);
+								
+								// Handle different event formats
+								let event: ClaudeStreamEvent;
+								
+								// Check if it's already a properly formatted event
+								if (parsed.type) {
+									event = parsed as ClaudeStreamEvent;
+								} 
+								// Handle events that might be wrapped or have different structure
+								else if (parsed.event) {
+									event = parsed.event as ClaudeStreamEvent;
+								}
+								// Handle raw text or content
+								else if (typeof parsed === 'string') {
+									event = {
+										type: 'text' as any,
+										text: parsed
+									} as ClaudeStreamEvent;
+								}
+								// Handle objects with content field
+								else if (parsed.content) {
+									event = {
+										type: 'content' as any,
+										content: parsed.content,
+										...parsed
+									} as ClaudeStreamEvent;
+								}
+								// Default case - treat as generic event
+								else {
+									event = {
+										type: 'unknown' as any,
+										...parsed
+									} as ClaudeStreamEvent;
+								}
+								
 								// Use stream buffer for optimized event handling
 								streamBuffer.addEvent(event);
-							} catch {
-								// Not JSON, treat as raw
-								setRawResponse(prev => prev + line + '\n');
+							} catch (error) {
+								// If we can't parse it as JSON in JSON mode, treat as text
+								if (line.trim() && !line.startsWith('data:')) {
+									// Add as a text event so it still gets displayed
+									const textEvent: ClaudeStreamEvent = {
+										type: 'text' as any,
+										text: line
+									};
+									streamBuffer.addEvent(textEvent);
+								}
+								
+								if (verbosity === 'debug' && process.env['RALPH_DEBUG_JSON'] === 'true') {
+									console.error('Failed to parse JSON event:', line, error);
+								}
 							}
 						}
 					}
@@ -201,7 +247,8 @@ export default function RalphLoop({
 
 	// Optimized response formatter using virtual renderer
 	const formatResponse = useCallback(() => {
-		if (isJsonMode && events.length > 0) {
+		if (isJsonMode) {
+			// Always use VirtualRenderer in JSON mode, even if no events yet
 			return (
 				<VirtualRenderer
 					events={events}
@@ -212,6 +259,7 @@ export default function RalphLoop({
 				/>
 			);
 		}
+		// Only show raw response in non-JSON mode
 		return <Text>{rawResponse || 'Waiting for response...'}</Text>;
 	}, [
 		isJsonMode,

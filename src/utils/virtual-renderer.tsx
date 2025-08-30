@@ -168,7 +168,7 @@ export const VirtualRenderer: React.FC<VirtualRendererProps> = ({
 
 			{/* Main content */}
 			{processedEvents.events.length === 0 ? (
-				<Text dimColor>Waiting for response...</Text>
+				<Text dimColor>Processing response...</Text>
 			) : (
 				renderProgressively()
 			)}

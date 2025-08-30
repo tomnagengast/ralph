@@ -1189,33 +1189,110 @@ export const formatClaudeEvent = (
 			);
 
 		default:
-			// For unknown event types, show based on verbosity
-			if (verbosity === 'debug') {
-				return (
-					<Box key={index} marginY={0.5} flexDirection="column">
-						{event.type && (
-							<Text dimColor bold>
-								[{event.type}] - DEBUG MODE
-							</Text>
-						)}
-						<Box paddingLeft={2}>{formatJson(event)}</Box>
-					</Box>
-				);
-			} else if (verbosity === 'verbose') {
-				return (
-					<Box key={index} marginY={0.5} flexDirection="column">
-						{event.type && (
-							<Text dimColor bold>
-								[{event.type}]
-							</Text>
-						)}
-						<Box paddingLeft={2}>{formatJson(event, true)}</Box>
-					</Box>
-				);
-			} else {
-				// Normal and minimal - don't show unknown events
-				return null;
+			// For unknown event types, try to extract meaningful text content
+			// Check for common text fields in the event
+			let textContent: string | null = null;
+			
+			// Try to extract text from various possible fields
+			if (typeof event === 'object' && event !== null) {
+				// Check for direct text fields
+				if ('text' in event && typeof event.text === 'string') {
+					textContent = event.text;
+				} else if ('content' in event && typeof event.content === 'string') {
+					textContent = event.content;
+				} else if ('message' in event && typeof event.message === 'string') {
+					textContent = event.message;
+				} else if ('result' in event && typeof event.result === 'string') {
+					textContent = event.result;
+				} else if ('data' in event && typeof event['data'] === 'string') {
+					textContent = event['data'];
+				} else if ('output' in event && typeof event['output'] === 'string') {
+					textContent = event['output'];
+				} else if ('response' in event && typeof event['response'] === 'string') {
+					textContent = event['response'];
+				} else if ('body' in event && typeof event['body'] === 'string') {
+					textContent = event['body'];
+				}
+				
+				// Try to extract from nested structures
+				if (!textContent) {
+					if ('delta' in event && event.delta && typeof event.delta === 'object') {
+						if ('text' in event.delta && typeof event.delta.text === 'string') {
+							textContent = event.delta.text;
+						} else if ('content' in event.delta && typeof event.delta.content === 'string') {
+							textContent = event.delta.content;
+						}
+					} else if ('message' in event && event.message && typeof event.message === 'object') {
+						if ('content' in event.message && typeof event.message.content === 'string') {
+							textContent = event.message.content;
+						} else if ('text' in event.message && typeof event.message.text === 'string') {
+							textContent = event.message.text;
+						}
+					}
+				}
+				
+				// If still no text content, try to extract any meaningful data
+				if (!textContent) {
+					// Try to find any non-metadata fields that might contain content
+					const meaningfulFields = Object.entries(event)
+						.filter(([key, value]) => {
+							// Skip metadata fields
+							if (['type', 'index', 'id', 'role', 'timestamp', 'version'].includes(key)) {
+								return false;
+							}
+							// Look for string values or objects that might have content
+							return value !== null && value !== undefined;
+						})
+						.map(([_key, value]) => {
+							if (typeof value === 'string') {
+								return value;
+							} else if (typeof value === 'object') {
+								// Try to extract text from nested objects
+								if ('text' in value && typeof value.text === 'string') {
+									return value.text;
+								} else if ('content' in value && typeof value.content === 'string') {
+									return value.content;
+								} else if ('message' in value && typeof value.message === 'string') {
+									return value.message;
+								}
+								// For other objects, format them nicely
+								return formatJson(value, true);
+							}
+							return String(value);
+						})
+						.filter(v => v && v.trim());
+					
+					if (meaningfulFields.length > 0) {
+						textContent = meaningfulFields.join(' ');
+					}
+				}
 			}
+			
+			// If we found text content, display it nicely
+			if (textContent && textContent.trim()) {
+				return (
+					<Text key={index} wrap="wrap">
+						{smartRenderText(textContent)}
+					</Text>
+				);
+			}
+			
+			// For completely unknown events with no extractable content,
+			// show a minimal indicator in verbose/debug mode only
+			if (verbosity === 'verbose' || verbosity === 'debug') {
+				// Try to show something meaningful about the event
+				const eventType = event.type || 'unknown';
+				const eventInfo = event.subtype || event['name'] || '';
+				
+				return (
+					<Text key={index} dimColor>
+						• {eventType}{eventInfo ? `: ${eventInfo}` : ''}
+					</Text>
+				);
+			}
+			
+			// In minimal/normal mode, silently skip truly empty events
+			return null;
 	}
 };
 
