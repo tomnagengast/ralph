@@ -15,9 +15,7 @@
 	"files": [
 		"dist"
 	],
-	"dependencies": {
-		"toml": "^3.0.0"
-	},
+	"dependencies": {},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",
 		"@vdemedes/prettier-config": "^2.0.1",

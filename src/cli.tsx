@@ -3,7 +3,6 @@ import {spawn} from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
-import toml from 'toml';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,26 +75,27 @@ if (command === 'init') {
 	createDirIfNotExists('specs/done');
 
 	// Create files with default content
-	const defaultSettings = `[run]
-interval_ms = 1000
-auto_stop_after_errors = 5
-
-[claude]
-flags = [
-  "--dangerously-skip-permissions",
-  "--verbose",
-  "--output-format",
-  "stream-json"
-]
-timeout_ms = 300000
-`;
+	const defaultSettings = {
+		run: {
+			interval_ms: 1000,
+			auto_stop_after_errors: 5,
+		},
+		claude: {
+			flags: [
+				'--dangerously-skip-permissions',
+				'--verbose',
+				'--output-format',
+				'stream-json',
+			],
+		},
+	};
 
 	const defaultPrompt = `# Default Prompt
 
 Replace this with your continuous prompt.
 `;
 
-	createFileIfNotExists('.ralph/settings.toml', defaultSettings);
+	createFileIfNotExists('.ralph/settings.json', JSON.stringify(defaultSettings, null, 2));
 	createFileIfNotExists('.ralph/plan.md');
 	createFileIfNotExists('.ralph/prompt.md', defaultPrompt);
 
@@ -133,13 +133,13 @@ if (command === 'run') {
 	
 	// Load settings
 	let settings: any = {};
-	const settingsPath = '.ralph/settings.toml';
+	const settingsPath = '.ralph/settings.json';
 	if (fs.existsSync(settingsPath)) {
 		try {
 			const content = fs.readFileSync(settingsPath, 'utf-8');
-			settings = toml.parse(content);
+			settings = JSON.parse(content);
 		} catch (error) {
-			console.error('Failed to parse settings.toml:', error);
+			console.error('Failed to parse settings.json:', error);
 		}
 	}
 	
@@ -162,37 +162,25 @@ if (command === 'run') {
 	const autoStopAfterErrors = settings.run?.auto_stop_after_errors ?? 5;
 	let consecutiveErrors = 0;
 	
-	console.log('🔄 Ralph Loop Running (Press Ctrl+C to stop)\n');
+	console.log('Ralph Loop Running (Press Ctrl+C to stop)\n');
 	
 	// Run loop
 	const runIteration = async () => {
 		const promptContent = fs.readFileSync(promptPath, 'utf-8');
 		
-		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-		
 		const claude = spawn('claude', claudeArgs, {
-			stdio: ['pipe', 'pipe', 'pipe'],
+			stdio: ['pipe', 'inherit', 'inherit'],  // Direct output to terminal
 		});
 		
 		// Send prompt to stdin
 		claude.stdin.write(promptContent);
 		claude.stdin.end();
 		
-		// Handle output
-		claude.stdout.on('data', (data) => {
-			process.stdout.write(data);
-		});
-		
-		claude.stderr.on('data', (data) => {
-			process.stderr.write(data);
-		});
-		
 		// Wait for completion
 		await new Promise<void>((resolve) => {
 			claude.on('close', (code) => {
 				if (code !== 0) {
 					consecutiveErrors++;
-					console.error(`\n⚠️  Claude exited with code ${code}`);
 					
 					if (consecutiveErrors >= autoStopAfterErrors) {
 						console.error(`\nStopping after ${consecutiveErrors} consecutive errors`);

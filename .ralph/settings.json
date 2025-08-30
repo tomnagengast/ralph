@@ -1,0 +1,14 @@
+{
+  "run": {
+    "interval_ms": 1000,
+    "auto_stop_after_errors": 5
+  },
+  "claude": {
+    "flags": [
+      "--dangerously-skip-permissions",
+      "--verbose",
+      "--output-format",
+      "stream-json"
+    ]
+  }
+}
