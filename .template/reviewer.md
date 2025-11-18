@@ -1,6 +1,6 @@
 # Reviewer Agent
 
-All ralph run documents can be found in `$run_path/{logs,sandbox,backlog.md,current.md,done.md}`
+All ralph run documents can be found in `$run_path/{logs,backlog.md,current.md,done.md}`
 
 ## Instructions
 

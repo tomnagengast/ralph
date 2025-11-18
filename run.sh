@@ -6,22 +6,22 @@ run_id=""
 start_mode=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --review)
-      # Alias for starting with the reviewer
-      start_mode="reviewer"
-      shift
-      ;;
-    --start)
-      start_mode="${2:-}"
-      shift 2
-      ;;
-    *)
-      # First non-flag arg is the run id
-      if [ -z "$run_id" ]; then
-        run_id="$1"
-      fi
-      shift
-      ;;
+  --review)
+    # Alias for starting with the reviewer
+    start_mode="reviewer"
+    shift
+    ;;
+  --start)
+    start_mode="${2:-}"
+    shift 2
+    ;;
+  *)
+    # First non-flag arg is the run id
+    if [ -z "$run_id" ]; then
+      run_id="$1"
+    fi
+    shift
+    ;;
   esac
 done
 
@@ -30,7 +30,7 @@ if [ -n "$start_mode" ]; then
 fi
 
 if [ -z "$run_id" ]; then
-  runs=$(find .ralph -maxdepth 1 -type d -name 'run-*' -printf '%f\n' | sort)
+  runs=$(find .ralph -maxdepth 1 -type d -name 'run-*' -exec basename {} \; | sort)
   run_id=$( (
     echo "Setup a new run"
     echo "$runs"
@@ -41,9 +41,9 @@ if [ "$run_id" == "Setup a new run" ]; then
   run_id="run-$(date +%Y-%m-%d-%H%M)"
 fi
 
-setup_exit_code="${RALPH_SETUP_EXIT_CODE:-64}"
+setup_exit_code="${RALPH_BASE_EXIT_CODE:-64}"
 done_exit_code="${RALPH_DONE_EXIT_CODE:-65}"
-export RALPH_SETUP_EXIT_CODE="$setup_exit_code"
+export RALPH_BASE_EXIT_CODE="$setup_exit_code"
 export RALPH_DONE_EXIT_CODE="$done_exit_code"
 
 function update_run_status() {
@@ -129,9 +129,10 @@ msg=(
   "I don’t like my new pants. They have opinions."
   "I brought my own milk. It’s warm."
 )
+term_width=$(tput cols)
 gum style \
   --foreground 227 --border-foreground 220 \
-  --border rounded --width 90 --padding "0 1" \
+  --border rounded --width=$((term_width * 90 / 100)) --padding "0 1" \
   --align center \
   "${msg[$((RANDOM % ${#msg[@]}))]}" "Running $run_id"
 

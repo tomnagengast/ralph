@@ -1,18 +1,16 @@
 #!/bin/bash
 set -eo pipefail
 
-# exit 0 # Leave for manual testing
+base_exit_code="${RALPH_BASE_EXIT_CODE:-64}"
+done_exit_code="${RALPH_DONE_EXIT_CODE:-65}" # Signals the loop controller to stop
+# exit $base_exit_code # Leave for manual testing
 
 run_id="${1:-}"
 loop="${2:-}"
-
 if [ -z "$run_id" ]; then
   echo "No run ID provided"
   exit 1
 fi
-
-setup_exit_code="${RALPH_SETUP_EXIT_CODE:-64}"
-done_exit_code="${RALPH_DONE_EXIT_CODE:-65}" # Signals the loop controller to stop
 
 export root="$(cd "$(git rev-parse --show-toplevel)" &>/dev/null && pwd)"
 # export root="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -21,20 +19,28 @@ trap 'popd >/dev/null' EXIT
 
 run_path=".ralph/$run_id"
 
-function cursor_builder() {
-  # Thanks https://github.com/johnlindquist/cursor-alias
-  A_MARKDOWN=1 \
-    A_LOG_FILE="$run_path/logs/composer-$(date +%Y-%m-%d-%H%M).md" \
-    a --force "$(<$run_path/builder.md)"
+function run_claude() {
+  local prompt="$1"
+  command claude -p --output-format=stream-json --verbose --dangerously-skip-permissions "$prompt" |
+    tee -a "$run_path/logs/claude-$(date +%Y-%m-%d-%H%M).jsonl" |
+    npx repomirror visualize --debug # TODO add json_schema output when available
 }
 
-function codex_reviewer() {
+function run_cursor() {
+  # Thanks https://github.com/johnlindquist/cursor-alias
+  local prompt="$1"
+  A_MARKDOWN=1 \
+    A_LOG_FILE="$run_path/logs/composer-$(date +%Y-%m-%d-%H%M).md" \
+    a --force "$prompt"
+}
+
+function run_codex() {
+  local prompt="$1"
   review_path="$run_path/logs/review-$(date +%Y-%m-%d-%H%M).json"
 
   command codex --yolo exec --skip-git-repo-check \
     --output-schema .ralph/review-schema.json \
-    --output-last-message "$review_path" \
-    "$(<$run_path/reviewer.md)"
+    --output-last-message "$review_path" "$prompt"
 
   # Update the run's last_commit and last_review in .ralph/state.json
   local tmp_state
@@ -46,14 +52,6 @@ function codex_reviewer() {
     .ralph/state.json >"$tmp_state"
   mv "$tmp_state" .ralph/state.json
 }
-
-# NOTE: testing, leave commented out for now
-# function claude_builder() {
-#   command claude -p --output-format=stream-json --verbose --dangerously-skip-permissions "$(<$run_path/builder.md)" |
-#     tee -a $run_path/logs/claude-$(date +%Y-%m-%d-%H%M).jsonl |
-#     npx repomirror visualize --debug
-#   # add json_schema output?
-# }
 
 function setup() {
   if [ ! -d "$run_path" ]; then
@@ -73,7 +71,7 @@ function setup() {
 
     gum format -- "# New Run Setup Complete" "- Created $run_path" "- Added to .ralph/state.json"
 
-    exit "$setup_exit_code"
+    exit "$base_exit_code"
   fi
 }
 
@@ -91,16 +89,33 @@ function git_sync() {
 }
 
 function run_builder() {
-  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"212\" \" ($loop) Running Builder \") }} {{ Color \"212\" \"0\" \"Cursor\" }}{{ printf \"\n\" }}" |
+  prompt="$(<$run_path/builder.md)"
+  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"212\" \" ($loop) Running Builder \") }} {{ Color \"212\" \"0\" \"$builder\" }}{{ printf \"\n\" }}" |
     gum format -t template
-  cursor_builder
+
+  case "$builder" in
+  "claude")
+    run_claude "$prompt"
+    ;;
+  "cursor")
+    run_cursor "$prompt"
+    ;;
+  esac
 }
 
 function run_reviewer() {
-  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"42\" \" ($loop) Running Reviewer \") }} {{ Color \"42\" \"0\" \"Codex\" }}{{ printf \"\n\" }}" |
+  prompt="$(<$run_path/reviewer.md)"
+  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"42\" \" ($loop) Running Reviewer \") }} {{ Color \"42\" \"0\" \"$reviewer\" }}{{ printf \"\n\" }}" |
     gum format -t template
-  echo ""
-  codex_reviewer
+
+  case "$reviewer" in
+  "claude")
+    run_claude "$prompt"
+    ;;
+  "codex")
+    run_codex "$prompt"
+    ;;
+  esac
 }
 
 function check_status() {
@@ -131,9 +146,15 @@ function check_status() {
 
 function main() {
   setup
+  config=$(yq -o=json "$run_path/config.toml")
+  builder="$(echo "$config" | jq -r '.builder // "cursor"')"
+  reviewer="$(echo "$config" | jq -r '.reviewer // "codex"')"
+  spec="$(echo "$config" | jq -r '.spec // empty')"
+  project_path="$(echo "$config" | jq -r '.project_path // empty')"
+  ralph_path="$(echo "$config" | jq -r '.ralph_path // empty')"
   git_sync
   local start_mode="${RALPH_START_MODE:-}"
-  # Skip the builder only on the very first reviewer-first loop (-review flag)
+  # Skip the builder only on the very first loop when passed `--review` flag
   if [ "$loop" -ne 1 ] || [ "$start_mode" != "reviewer" ]; then
     run_builder
   fi

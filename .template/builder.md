@@ -1,6 +1,6 @@
 # Builder Agent
 
-All ralph run documents can be found in `$run_path/{logs,sandbox,backlog.md,current.md,done.md}`
+All ralph run documents can be found in `$run_path/{logs,backlog.md,current.md,done.md}`
 
 ## Instructions
 
@@ -25,4 +25,4 @@ Build:
 
 ## Notes
 
-Use the `./sandbox/` directory as a scratchpad for your work (prefix with `YYYY-MM-DD-HHMM-<slug>` for clarity). Store long term plans, notes, helper scripts and todo lists there.
+Use the `.ralph/notes/` directory as a scratchpad for your work (prefix with `YYYY-MM-DD-HHMM-<slug>` for clarity). Store long term plans, notes, helper scripts and todo lists there.
