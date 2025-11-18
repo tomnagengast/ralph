@@ -165,7 +165,6 @@ while :; do
   echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"220\" \" ($loop) Finished Loop \") }} {{ Color \"227\" \"0\" \"$run_id\" }}{{ printf \"\n\" }}" |
     gum format -t template
   loop=$((loop + 1))
-  [ "$(date +%H%M)" -ge 0030 ] && [ "$(date +%H)" -eq 0 ] && exit 0 # close up shop if its after 12:30AM
-  echo ""
+  # [ "$(date +%H%M)" -ge 0030 ] && [ "$(date +%H)" -eq 0 ] && exit 0 # close up shop if its after 12:30AM
   sleep 10
 done

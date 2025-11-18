@@ -17,14 +17,14 @@
     },
     "review_comments": {
       "type": "array",
-      "description": "Reviewer notes, concerns, or suggestions",
+      "description": "A list of reviewer notes, concerns, or suggestions",
       "items": {
         "type": "string"
       }
     },
     "additional_comments": {
       "type": "array",
-      "description": "Additional comments or notes from the reviewer",
+      "description": "A list of additional comments or notes from the reviewer",
       "items": {
         "type": "string"
       }

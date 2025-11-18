@@ -16,6 +16,12 @@ pushd "$project" >/dev/null || exit 1
 trap 'popd >/dev/null' EXIT
 
 run_path="$ralph/$run_id"
+config=$(yq -o=json "$run_path/config.toml")
+builder="$(echo "$config" | jq -r '.builder // "cursor"')"
+reviewer="$(echo "$config" | jq -r '.reviewer // "codex"')"
+spec="$(echo "$config" | jq -r '.spec // empty')"
+project_path="$(echo "$config" | jq -r '.project_path // empty')"
+ralph_path="$(echo "$config" | jq -r '.ralph_path // empty')"
 
 function run_claude() {
   local prompt="$1"
@@ -141,12 +147,6 @@ function check_status() {
 
 function main() {
   setup
-  config=$(yq -o=json "$run_path/config.toml")
-  builder="$(echo "$config" | jq -r '.builder // "cursor"')"
-  reviewer="$(echo "$config" | jq -r '.reviewer // "codex"')"
-  spec="$(echo "$config" | jq -r '.spec // empty')"
-  project_path="$(echo "$config" | jq -r '.project_path // empty')"
-  ralph_path="$(echo "$config" | jq -r '.ralph_path // empty')"
   git_sync
   local start_mode="${RALPH_START_MODE:-}"
   # Skip the builder only on the very first loop when passed `--review` flag
