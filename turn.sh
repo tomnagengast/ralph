@@ -12,12 +12,10 @@ if [ -z "$run_id" ]; then
   exit 1
 fi
 
-export root="$(cd "$(git rev-parse --show-toplevel)" &>/dev/null && pwd)"
-# export root="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-pushd "$root" >/dev/null || exit 1
+pushd "$project" >/dev/null || exit 1
 trap 'popd >/dev/null' EXIT
 
-run_path=".ralph/$run_id"
+run_path="$ralph/$run_id"
 
 function run_claude() {
   local prompt="$1"
@@ -39,7 +37,7 @@ function run_codex() {
   review_path="$run_path/logs/review-$(date +%Y-%m-%d-%H%M).json"
 
   command codex --yolo exec --skip-git-repo-check \
-    --output-schema .ralph/review-schema.json \
+    --output-schema $ralph/review-schema.json \
     --output-last-message "$review_path" "$prompt"
 
   # Update the run's last_commit and last_review in .ralph/state.json
@@ -56,9 +54,9 @@ function run_codex() {
 function setup() {
   if [ ! -d "$run_path" ]; then
     [ -f .ralph/state.json ] || echo "[]" >.ralph/state.json
-    cp -r ".ralph/.template" "$run_path"
+    cp -r "$ralph/.template" "$run_path"
     bun -e "
-    const f = await Bun.file('.ralph/state.json').json();
+    const f = await Bun.file('${ralph}/state.json').json();
     f.push({
       id: '${run_id}',
       status: 'inactive',
@@ -66,10 +64,10 @@ function setup() {
       last_commit: '$(git rev-parse HEAD)',
       last_review: ''
     });
-    await Bun.write('.ralph/state.json', JSON.stringify(f, null, 2));
+    await Bun.write('${ralph}/state.json', JSON.stringify(f, null, 2));
     "
 
-    gum format -- "# New Run Setup Complete" "- Created $run_path" "- Added to .ralph/state.json"
+    gum format -- "# New Run Setup Complete" "- Created $run_path" "- Added to $ralph/state.json"
 
     exit "$base_exit_code"
   fi
@@ -89,7 +87,7 @@ function git_sync() {
 }
 
 function run_builder() {
-  prompt="$(<$run_path/builder.md)"
+  prompt="run:$run_path"$'\n'"$(<$ralph/AGENTS.md)$(<$run_path/builder.md)"
   echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"212\" \" ($loop) Running Builder \") }} {{ Color \"212\" \"0\" \"$builder\" }}{{ printf \"\n\" }}" |
     gum format -t template
 
@@ -104,7 +102,7 @@ function run_builder() {
 }
 
 function run_reviewer() {
-  prompt="$(<$run_path/reviewer.md)"
+  prompt="run:$run_path"$'\n'"$(<$ralph/AGENTS.md)$(<$run_path/reviewer.md)"
   echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"42\" \" ($loop) Running Reviewer \") }} {{ Color \"42\" \"0\" \"$reviewer\" }}{{ printf \"\n\" }}" |
     gum format -t template
 
@@ -123,7 +121,7 @@ function check_status() {
   local last_review
   local status
 
-  state_last_review=$(jq -r --arg run_id "$run_id" '.[] | select(.id == $run_id) | .last_review // empty' .ralph/state.json)
+  state_last_review=$(jq -r --arg run_id "$run_id" '.[] | select(.id == $run_id) | .last_review // empty' $ralph/state.json)
   last_review="$state_last_review"
 
   if [ -z "$last_review" ] && [ -d "$run_path/logs" ] && compgen -G "$run_path/logs/review-*.json" >/dev/null; then
@@ -132,16 +130,13 @@ function check_status() {
 
   if [ -z "$last_review" ]; then
     echo "No last review found"
-    return 0
+    exit "$base_exit_code"
   fi
 
   status=$(jq -r '.status // empty' "$last_review")
   if [ "$status" == "ok" ]; then
-    echo "Done! Exiting..."
     exit "$done_exit_code"
   fi
-
-  echo "Continuing... 🚀"
 }
 
 function main() {

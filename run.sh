@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+export project="$(cd "$(git rev-parse --show-toplevel)" &>/dev/null && pwd)"
+export ralph="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+
 # Parse flags
 run_id=""
 start_mode=""
@@ -30,7 +33,7 @@ if [ -n "$start_mode" ]; then
 fi
 
 if [ -z "$run_id" ]; then
-  runs=$(find .ralph -maxdepth 1 -type d -name 'run-*' -exec basename {} \; | sort)
+  runs=$(find $ralph -maxdepth 1 -type d -name 'run-*' -exec basename {} \; | sort)
   run_id=$( (
     echo "Setup a new run"
     echo "$runs"
@@ -48,7 +51,7 @@ export RALPH_DONE_EXIT_CODE="$done_exit_code"
 
 function update_run_status() {
   local new_status="${1:-}"
-  local state_path=".ralph/state.json"
+  local state_path="$ralph/state.json"
 
   [ -n "$run_id" ] || return 0
   [ -f "$state_path" ] || return 0
@@ -136,7 +139,7 @@ gum style \
   --align center \
   "${msg[$((RANDOM % ${#msg[@]}))]}" "Running $run_id"
 
-if [ -d ".ralph/$run_id" ]; then
+if [ -d "$ralph/$run_id" ]; then
   update_run_status "active"
 fi
 
@@ -146,13 +149,14 @@ while :; do
     gum format -t template
 
   status=0
-  bash .ralph/turn.sh "$run_id" "$loop" || status=$?
+  bash $ralph/turn.sh "$run_id" "$loop" || status=$?
   if [ "$status" -ne 0 ]; then
     if [ "$status" -eq "$setup_exit_code" ]; then
       exit 0
     fi
     if [ "$status" -eq "$done_exit_code" ]; then
-      echo "Latest reviewer status is ok; stopping $run_id ✅"
+      echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"220\" \" ($loop) All done \") }} {{ Color \"227\" \"0\" \"$run_id\" }}{{ printf \"\n\" }}" |
+        gum format -t template
       exit 0
     fi
     exit "$status"
