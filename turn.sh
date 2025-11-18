@@ -57,10 +57,22 @@ function run_codex() {
   mv "$tmp_state" .ralph/state.json
 }
 
+function run_gemini() {
+  local system="
+    <system_prompt>
+    When acting as the reviewer, save your final review to $run_path/logs/review-$(date +%Y-%m-%d-%H%M).json
+    using the format from $ralph/review-schema.json
+    </system_prompt>
+  "
+  local prompt="$1"
+  command gemini -m gemini-3-pro-preview --yolo --output-format stream-json -p "$system$prompt" |
+    $ralph_path/display/gemini/gemini-display
+}
+
 function setup() {
   if [ ! -d "$run_path" ]; then
     [ -f .ralph/state.json ] || echo "[]" >.ralph/state.json
-    cp -r "$ralph/.template" "$run_path"
+    cp -r "$ralph/run-template" "$run_path"
     bun -e "
     const f = await Bun.file('${ralph}/state.json').json();
     f.push({
@@ -104,6 +116,9 @@ function run_builder() {
   "cursor")
     run_cursor "$prompt"
     ;;
+  "gemini")
+    run_gemini "$prompt"
+    ;;
   esac
 }
 
@@ -118,6 +133,9 @@ function run_reviewer() {
     ;;
   "codex")
     run_codex "$prompt"
+    ;;
+  "gemini")
+    run_gemini "$prompt"
     ;;
   esac
 }

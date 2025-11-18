@@ -14,7 +14,7 @@ Choose:
 > Setup a new run
 ```
 
-This copies the `.ralph/.template` to a dedicated `run-$(date +%Y-%m-%d-%H%M)` directory.
+This copies the `.ralph/run-template` to a dedicated `run-$(date +%Y-%m-%d-%H%M)` directory.
 
 You can then:
 - Update `.ralph/<run>/ralph.md` with your spec or additional run-specific context for the agents

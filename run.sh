@@ -33,7 +33,7 @@ if [ -n "$start_mode" ]; then
 fi
 
 if [ -z "$run_id" ]; then
-  runs=$(find $ralph -maxdepth 1 -type d -name 'run-*' -exec basename {} \; | sort)
+  runs=$(find $ralph -maxdepth 1 -type d -name 'run-2*' -exec basename {} \; | sort)
   run_id=$( (
     echo "Setup a new run"
     echo "$runs"
