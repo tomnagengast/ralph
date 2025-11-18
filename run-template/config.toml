@@ -1,0 +1,5 @@
+# project_path = "$(git rev-parse --show-toplevel)"
+# ralph_path = "$(git rev-parse --show-toplevel)/.ralph"
+# spec = "specs/<spec>.md"
+# builder = "gemini"
+# reviewer = "codex"

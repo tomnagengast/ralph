@@ -134,10 +134,12 @@ class GlowRenderer extends marked.Renderer {
   del(text) {
     return chalk.strikethrough(text);
   }
-  link(href, title, text) {
-    return colors.accent.underline(text || href) + (title ? ` (${title})` : "");
+  link(href, _title, text) {
+    return (
+      colors.accent.underline(text || href) + (_title ? ` (${title})` : "")
+    );
   }
-  image(href, title, text) {
+  image(href, _title, text) {
     return colors.gray(`[Image: ${text || href}]`);
   }
   text(text) {
@@ -263,7 +265,7 @@ ${colors.gray("Model:")}      ${colors.text(data.model)}`,
               margin: 0,
               borderStyle: "round",
               borderColor: "green",
-              title: "Gemini Session Started",
+              _title: "Gemini Session Started",
               width: TERMINAL_WIDTH,
             },
           ),
@@ -316,7 +318,7 @@ ${colors.gray("Model:")}      ${colors.text(data.model)}`,
             margin: 0,
             borderStyle: borderTopBottom,
             borderColor: "blue",
-            title: `${colors.secondary("Tool Use:")} ${colors.text.bold(data.tool_name)}`,
+            _title: `${colors.secondary("Tool Use:")} ${colors.text.bold(data.tool_name)}`,
             width: TERMINAL_WIDTH,
           }),
         );
@@ -349,7 +351,7 @@ ${colors.gray("Model:")}      ${colors.text(data.model)}`,
             margin: 0,
             borderStyle: borderTopBottom,
             borderColor: color,
-            title: `Tool Result ${isError ? colors.red(statusLabel) : colors.green(statusLabel)}`,
+            _title: `Tool Result ${isError ? colors.red(statusLabel) : colors.green(statusLabel)}`,
             width: TERMINAL_WIDTH,
           }),
         );
@@ -370,7 +372,7 @@ ${colors.gray("Model:")}      ${colors.text(data.model)}`,
             margin: 0,
             borderStyle: "double",
             borderColor: "green",
-            title: "Completed",
+            _title: "Completed",
             width: TERMINAL_WIDTH,
             textAlignment: "center",
           }),

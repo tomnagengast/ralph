@@ -19,7 +19,19 @@
       "type": "array",
       "description": "A list of reviewer notes, concerns, or suggestions",
       "items": {
-        "type": "string"
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "description"],
+        "properties": {
+          "priority": {
+            "type": "string",
+            "description": "Priority level as a string (for example, '1' for highest priority)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Markdown text describing the review comment"
+          }
+        }
       }
     },
     "additional_comments": {

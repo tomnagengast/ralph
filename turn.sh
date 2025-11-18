@@ -65,7 +65,8 @@ function run_gemini() {
     </system_prompt>
   "
   local prompt="$1"
-  command gemini -m gemini-3-pro-preview --yolo --output-format stream-json -p "$system$prompt" |
+  command gemini -m gemini-3-pro-preview --yolo --output-format stream-json -p "$system
+$prompt" |
     $ralph_path/display/gemini/gemini-display
 }
 
@@ -105,8 +106,11 @@ function git_sync() {
 }
 
 function run_builder() {
-  prompt="run:$run_path"$'\n'"$(<$ralph/AGENTS.md)$(<$run_path/builder.md)"
-  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"212\" \" ($loop) Running Builder \") }} {{ Color \"212\" \"0\" \"$builder\" }}{{ printf \"\n\" }}" |
+  prompt="run:$run_path
+  $(<"$ralph/AGENTS.md")
+  $(<"$run_path/builder.md")"
+
+  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"212\" \" ($loop) Running Builder \") }} {{ Color \"212\" \"0\" \"$builder\"}}{{ printf \"\n\" }}" |
     gum format -t template
 
   case "$builder" in
@@ -123,8 +127,10 @@ function run_builder() {
 }
 
 function run_reviewer() {
-  prompt="run:$run_path"$'\n'"$(<$ralph/AGENTS.md)$(<$run_path/reviewer.md)"
-  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"42\" \" ($loop) Running Reviewer \") }} {{ Color \"42\" \"0\" \"$reviewer\" }}{{ printf \"\n\" }}" |
+  prompt="run:$run_path
+  $(<"$ralph/AGENTS.md")
+  $(<"$run_path/reviewer.md")"
+  echo "$(date +%Y-%m-%d\ %I:%M:%S\ %p) {{ Bold (Color \"0\" \"42\" \" ($loop) Running Reviewer \") }} {{ Color \"42\" \"0\" \"$reviewer\"}}{{ printf \"\n\" }}" |
     gum format -t template
 
   case "$reviewer" in
