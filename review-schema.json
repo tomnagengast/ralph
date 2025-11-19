@@ -13,7 +13,7 @@
     "status": {
       "type": "string",
       "enum": ["ok", "not ok"],
-      "description": "Overall review outcome: ok if complete with no blocking issues, not ok otherwise"
+      "description": "Overall review outcome: not ok if any P0/P1 issues found, otherwiseok"
     },
     "review_comments": {
       "type": "array",

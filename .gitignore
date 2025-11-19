@@ -1,5 +1,6 @@
-state.json
+dist/
+node_modules/
 notes/
-run-*
+run-*/
 !run-template
-
+state.json
