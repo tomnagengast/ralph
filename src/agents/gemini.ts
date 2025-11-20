@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { display, finish } from "../ui/gemini";
 import type { Agent, AgentOptions } from "./contracts";
@@ -9,7 +10,9 @@ export class GeminiAgent implements Agent {
 			.toISOString()
 			.replace(/[:.]/g, "-")
 			.slice(0, 16);
-		const logFile = join(run.state.path, "logs", `gemini-${timestamp}.jsonl`);
+		const logDir = join(run.state.path, "logs");
+		await mkdir(logDir, { recursive: true });
+		const logFile = join(logDir, `gemini-${timestamp}.jsonl`);
 		const system = `
     <system_prompt>
     When acting as the reviewer, save your final review to ${run.state.path}/logs/review-${timestamp}.json
@@ -33,13 +36,6 @@ export class GeminiAgent implements Agent {
 			stderr: "inherit",
 		});
 
-		Bun.spawn({
-			cmd: ["tee", "-a", logFile],
-			stdin: proc.stdout,
-			stdout: "pipe",
-			stderr: "inherit",
-		});
-
 		if (proc.stdout) {
 			const reader = proc.stdout.getReader();
 			const decoder = new TextDecoder();
@@ -51,7 +47,10 @@ export class GeminiAgent implements Agent {
 				if (done) {
 					break;
 				}
-				buffer += decoder.decode(value, { stream: true });
+				if (value) {
+					await Bun.write(logFile, value, { append: true });
+					buffer += decoder.decode(value, { stream: true });
+				}
 
 				let index = buffer.indexOf("\n");
 				while (index !== -1) {
@@ -62,7 +61,11 @@ export class GeminiAgent implements Agent {
 				}
 			}
 
-			buffer += decoder.decode();
+			const finalText = decoder.decode();
+			if (finalText) {
+				buffer += finalText;
+			}
+
 			if (buffer) {
 				display(buffer);
 			}
