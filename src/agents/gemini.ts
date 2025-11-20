@@ -4,10 +4,7 @@ import type { Agent, AgentOptions } from "./contracts";
 export class GeminiAgent implements Agent {
   async run(options: AgentOptions) {
     const { prompt, run } = options;
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, 16);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 16);
     const system = `
     <system_prompt>
     When acting as the reviewer, save your final review to ${run.state.path}/logs/review-${timestamp}.json
@@ -17,16 +14,7 @@ export class GeminiAgent implements Agent {
     const fullPrompt = `${system}\n${prompt}`;
 
     const proc = Bun.spawn({
-      cmd: [
-        "gemini",
-        "-m",
-        "gemini-3-pro-preview",
-        "--yolo",
-        "--output-format",
-        "stream-json",
-        "-p",
-        fullPrompt,
-      ],
+      cmd: ["gemini", "-m", "gemini-3-pro-preview", "--yolo", "--output-format", "stream-json", "-p", fullPrompt],
       stdout: "pipe",
       stderr: "inherit",
     });

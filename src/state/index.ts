@@ -28,9 +28,7 @@ export class Run {
   }
 
   static async find(ralph: string, id: string): Promise<Run | undefined> {
-    const store = (await Bun.file(
-      join(ralph, "state.json"),
-    ).json()) as RunState[];
+    const store = (await Bun.file(join(ralph, "state.json")).json()) as RunState[];
     const run = store.find((r) => r.id === id);
     if (!run) {
       throw new Error(`Run ${id} not found`);

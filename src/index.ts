@@ -91,10 +91,7 @@ async function main() {
   while (true) {
     const exitCode = await run.loop(loop);
     if (exitCode !== 0) {
-      if (
-        exitCode === RALPH_BASE_EXIT_CODE ||
-        exitCode === RALPH_DONE_EXIT_CODE
-      ) {
+      if (exitCode === RALPH_BASE_EXIT_CODE || exitCode === RALPH_DONE_EXIT_CODE) {
         await cleanup(0);
       }
       await cleanup(exitCode);

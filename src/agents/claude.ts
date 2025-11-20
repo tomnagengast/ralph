@@ -4,21 +4,11 @@ import type { Agent, AgentOptions } from "./contracts";
 export class ClaudeAgent implements Agent {
   async run(options: AgentOptions) {
     const { prompt, run } = options;
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, 16);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 16);
     const logFile = join(run.state.path, "logs", `claude-${timestamp}.jsonl`);
 
     const p1 = Bun.spawn({
-      cmd: [
-        "claude",
-        "-p",
-        "--output-format=stream-json",
-        "--verbose",
-        "--dangerously-skip-permissions",
-        prompt,
-      ],
+      cmd: ["claude", "-p", "--output-format=stream-json", "--verbose", "--dangerously-skip-permissions", prompt],
       stderr: "inherit",
       stdout: "pipe",
     });

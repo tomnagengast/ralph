@@ -7,14 +7,8 @@ import type { Run } from "./state";
 import { hi } from "./ui";
 
 // Configuration
-const RALPH_BASE_EXIT_CODE = parseInt(
-  process.env.RALPH_BASE_EXIT_CODE || "64",
-  10,
-);
-const RALPH_DONE_EXIT_CODE = parseInt(
-  process.env.RALPH_DONE_EXIT_CODE || "65",
-  10,
-);
+const RALPH_BASE_EXIT_CODE = parseInt(process.env.RALPH_BASE_EXIT_CODE || "64", 10);
+const RALPH_DONE_EXIT_CODE = parseInt(process.env.RALPH_DONE_EXIT_CODE || "65", 10);
 
 export async function turn(run: Run, loop: number): Promise<number> {
   try {
@@ -24,12 +18,9 @@ export async function turn(run: Run, loop: number): Promise<number> {
   }
 
   // Read Config
-  const { default: config } = await import(
-    join(run.state.path, "config.toml"),
-    {
-      with: { type: "toml" },
-    }
-  );
+  const { default: config } = await import(join(run.state.path, "config.toml"), {
+    with: { type: "toml" },
+  });
   const agentsMd = await Bun.file(join(run.state.path, "../AGENTS.md")).text();
 
   hi(`start mode ${run.state.mode}`);

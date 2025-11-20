@@ -8,11 +8,7 @@ export function hi(title: string, message: string = "") {
   console.log(`${dateStr} ${runInfo} ${messageInfo}\n`);
 }
 
-export function step(
-  role: "Builder" | "Reviewer",
-  agent: string,
-  loop: number,
-) {
+export function step(role: "Builder" | "Reviewer", agent: string, loop: number) {
   const date = new Date();
   const timeStr = date.toLocaleTimeString("en-US", {
     hour12: true,
@@ -27,16 +23,10 @@ export function step(
   let agentInfo: string;
 
   if (role === "Builder") {
-    loopInfo = chalk
-      .bgHex("#FF00AF")
-      .hex("#000000")
-      .bold(` (${loop}) Running Builder `);
+    loopInfo = chalk.bgHex("#FF00AF").hex("#000000").bold(` (${loop}) Running Builder `);
     agentInfo = chalk.hex("#FF00AF")(agent);
   } else {
-    loopInfo = chalk
-      .bgHex("#00FF00")
-      .hex("#000000")
-      .bold(` (${loop}) Running Reviewer `);
+    loopInfo = chalk.bgHex("#00FF00").hex("#000000").bold(` (${loop}) Running Reviewer `);
     agentInfo = chalk.hex("#00FF00")(agent);
   }
   console.log(`${displayDate} ${loopInfo} ${agentInfo}\n`);

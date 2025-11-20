@@ -3,20 +3,9 @@ import boxen, { type Options } from "boxen";
 import { highlight } from "cli-highlight";
 import wrapAnsi from "wrap-ansi";
 import { renderMarkdown } from "./markdown";
-import {
-  borderTopBottom,
-  CONTENT_WIDTH,
-  colors,
-  TERMINAL_WIDTH,
-} from "./theme";
+import { CONTENT_WIDTH, colors, TERMINAL_WIDTH } from "./theme";
 
-type Role =
-  | "user"
-  | "assistant_delta"
-  | "tool_use"
-  | "tool_result"
-  | "result"
-  | null;
+type Role = "user" | "assistant_delta" | "tool_use" | "tool_result" | "result" | null;
 
 type InitEvent = {
   type: "init";
@@ -52,12 +41,7 @@ type ResultEvent = {
   };
 };
 
-type StreamEvent =
-  | InitEvent
-  | MessageEvent
-  | ToolUseEvent
-  | ToolResultEvent
-  | ResultEvent;
+type StreamEvent = InitEvent | MessageEvent | ToolUseEvent | ToolResultEvent | ResultEvent;
 
 type State = {
   role: Role;
@@ -187,10 +171,7 @@ function handleToolResult(event: ToolResultEvent) {
 
   let body = "(No output)";
   if (event.output) {
-    const raw =
-      typeof event.output === "string"
-        ? event.output
-        : JSON.stringify(event.output, null, 2);
+    const raw = typeof event.output === "string" ? event.output : JSON.stringify(event.output, null, 2);
     if (raw.length > 2000) {
       body = `${raw.substring(0, 2000)}\n... (truncated)`;
     } else {
@@ -256,10 +237,7 @@ function handleLine(state: State, raw: string) {
     const data = JSON.parse(line) as StreamEvent;
     const type = data.type;
 
-    if (
-      state.role === "assistant_delta" &&
-      (type !== "message" || (data as MessageEvent).role !== "assistant")
-    ) {
+    if (state.role === "assistant_delta" && (type !== "message" || (data as MessageEvent).role !== "assistant")) {
       finalizeAssistant(state);
     }
 
